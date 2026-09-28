@@ -8,17 +8,27 @@ export class AppError extends Error {
   }
 }
 export class NotFoundError extends AppError {
-  constructor(msg = "Not found") { super(404, msg, "NOT_FOUND"); }
+  constructor(msg = "Not found") {
+    super(404, msg, "NOT_FOUND");
+  }
 }
 export class ForbiddenError extends AppError {
-  constructor(msg = "Forbidden") { super(403, msg, "FORBIDDEN"); }
+  constructor(msg = "Forbidden") {
+    super(403, msg, "FORBIDDEN");
+  }
 }
 export class ConflictError extends AppError {
-  constructor(msg: string) { super(409, msg, "CONFLICT"); }
+  constructor(msg: string) {
+    super(409, msg, "CONFLICT");
+  }
 }
 export class BadRequestError extends AppError {
-  constructor(msg: string) { super(400, msg, "BAD_REQUEST"); }
+  constructor(msg: string) {
+    super(400, msg, "BAD_REQUEST");
+  }
 }
 export class UpstreamError extends AppError {
-  constructor(msg = "Payment provider error") { super(502, msg, "UPSTREAM_ERROR"); }
+  constructor(msg = "Payment provider error") {
+    super(502, msg, "UPSTREAM_ERROR");
+  }
 }

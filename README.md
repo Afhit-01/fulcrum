@@ -12,15 +12,15 @@ The main idea is simple: an order should not just be created and forgotten. Its 
 
 ## Tech Stack
 
-* Node.js
-* TypeScript
-* Express
-* PostgreSQL
-* JWT
-* bcrypt
-* Helmet
-* express-rate-limit
-* Vitest
+- Node.js
+- TypeScript
+- Express
+- PostgreSQL
+- JWT
+- bcrypt
+- Helmet
+- express-rate-limit
+- Vitest
 
 ## Getting Started
 
@@ -28,9 +28,9 @@ The main idea is simple: an order should not just be created and forgotten. Its 
 
 You need:
 
-* Node.js
-* npm
-* PostgreSQL
+- Node.js
+- npm
+- PostgreSQL
 
 ### 1. Install dependencies
 
@@ -174,19 +174,19 @@ Login failures also return the same generic `Invalid credentials` message whethe
 
 The application currently has three roles:
 
-* `customer`
-* `staff`
-* `admin`
+- `customer`
+- `staff`
+- `admin`
 
 The roles determine which operations a user is allowed to perform.
 
 For example:
 
-* Customers can create orders.
-* Customers can request returns for their own orders.
-* Staff and admins can review return requests.
-* Staff and admins can move returns through operational stages.
-* Staff and admins can process refunds.
+- Customers can create orders.
+- Customers can request returns for their own orders.
+- Staff and admins can review return requests.
+- Staff and admins can move returns through operational stages.
+- Staff and admins can process refunds.
 
 Authentication is handled by the `requireAuth` middleware, while role-specific permissions are enforced where the operation requires them.
 
@@ -428,24 +428,24 @@ Validation happens at different levels.
 
 Routes handle things like:
 
-* Required parameters
-* Request body shape
-* Valid status values
-* Valid return decisions
-* Numeric quantities
-* Required fields
+- Required parameters
+- Request body shape
+- Valid status values
+- Valid return decisions
+- Numeric quantities
+- Required fields
 
 Services handle the rules that depend on the application's business logic.
 
 For example:
 
-* Only customers can create orders.
-* Only customers can request returns.
-* Only staff/admin can process returns.
-* Orders must follow the defined state machine.
-* Returns must follow the defined state machine.
-* Return quantities cannot exceed the quantity ordered.
-* Refunds cannot be created before a return is received.
+- Only customers can create orders.
+- Only customers can request returns.
+- Only staff/admin can process returns.
+- Orders must follow the defined state machine.
+- Returns must follow the defined state machine.
+- Return quantities cannot exceed the quantity ordered.
+- Refunds cannot be created before a return is received.
 
 ## Database
 
@@ -489,17 +489,17 @@ The project uses Vitest for automated tests.
 
 The test suite covers:
 
-* Authentication boundaries
-* Role-based access control
-* Customer data isolation
-* Idempotency
-* Concurrent duplicate requests
-* Order state transitions
-* Return state transitions
-* Return rejection cascades
-* Refund completion cascades
-* Failed refund retry behavior
-* Database migration behavior
+- Authentication boundaries
+- Role-based access control
+- Customer data isolation
+- Idempotency
+- Concurrent duplicate requests
+- Order state transitions
+- Return state transitions
+- Return rejection cascades
+- Refund completion cascades
+- Failed refund retry behavior
+- Database migration behavior
 
 The suite can be run with:
 
@@ -571,25 +571,25 @@ The project has been a way for me to put backend concepts into an actual system 
 
 Some of the concepts currently implemented are:
 
-* REST API design
-* Layered architecture
-* TypeScript
-* Authentication
-* JWT
-* Role-based access control
-* Data isolation
-* Request and business validation
-* State machines
-* PostgreSQL
-* Relational data modeling
-* Parameterized SQL
-* Database transactions
-* Idempotency
-* Rate limiting
-* Error handling
-* Database migrations
-* Automated testing
-* Separation of concerns
+- REST API design
+- Layered architecture
+- TypeScript
+- Authentication
+- JWT
+- Role-based access control
+- Data isolation
+- Request and business validation
+- State machines
+- PostgreSQL
+- Relational data modeling
+- Parameterized SQL
+- Database transactions
+- Idempotency
+- Rate limiting
+- Error handling
+- Database migrations
+- Automated testing
+- Separation of concerns
 
 ## Current Scope
 
