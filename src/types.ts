@@ -78,3 +78,9 @@ export interface IdempotencyRecord {
   status: "in_progress" | "completed";
   created_at: Date;
 }
+
+export interface PaymentBody {
+  amount: number; // kobo
+  email: string;
+  reference?: string;
+}
