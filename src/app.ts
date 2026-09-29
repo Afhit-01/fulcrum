@@ -1,8 +1,4 @@
-import express, {
-  type Express,
-  type Request,
-  type Response,
-} from "express";
+import express, { type Express, type Request, type Response } from "express";
 import dotenv from "dotenv";
 import helmet from "helmet";
 import { authLimiter, apiLimiter } from "./middleware/rateLimiter.js";

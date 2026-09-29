@@ -21,7 +21,11 @@ import {
 import { validateBody } from "../middleware/validateBody.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { checkIdempotency } from "../middleware/idempotency.js";
-import { NotFoundError } from "../errors/AppError.js";
+import {
+  BadRequestError,
+  ForbiddenError,
+  NotFoundError,
+} from "../errors/AppError.js";
 
 const router = Router();
 
@@ -33,9 +37,7 @@ router.post(
   validateBody(isCreateOrderPayload),
   async (req: Request, res: Response) => {
     if (!isCreateOrderPayload(req.body)) {
-      return res.status(400).json({
-        error: "Invalid order payload",
-      });
+      throw new BadRequestError("Invalid order payload");
     }
 
     const { items } = req.body;
@@ -43,9 +45,7 @@ router.post(
     const result = await createOrder(req.user!, items);
 
     if (!result.success) {
-      return res.status(400).json({
-        error: result.reason,
-      });
+      throw new BadRequestError(result.reason);
     }
 
     return res.status(201).json(result.order);
@@ -56,9 +56,7 @@ router.get("/", async (req: Request, res: Response) => {
   const status = req.query.status as OrderStatus | undefined;
 
   if (!status) {
-    return res.status(400).json({
-      error: "Status query param is required",
-    });
+    throw new BadRequestError("Status query param is required");
   }
 
   const orders = await getOrdersByStatus(status, req.user!);
@@ -68,9 +66,7 @@ router.get("/", async (req: Request, res: Response) => {
 
 router.get("/report", async (req: Request, res: Response) => {
   if (req.user!.role !== "staff" && req.user!.role !== "admin") {
-    return res.status(403).json({
-      error: "You are not authorized to view order reports",
-    });
+    throw new ForbiddenError("You are not authorized to view order reports");
   }
 
   const report = await getOrderReport();
@@ -80,9 +76,7 @@ router.get("/report", async (req: Request, res: Response) => {
 
 router.get("/:orderId", async (req: Request, res: Response) => {
   if (!isValidParam(req.params.orderId)) {
-    return res.status(400).json({
-      error: "orderId must be provided",
-    });
+    throw new BadRequestError("orderId must be provided");
   }
 
   const order = await getOrderById(req.params.orderId, req.user!);
@@ -96,17 +90,13 @@ router.get("/:orderId", async (req: Request, res: Response) => {
 
 router.get("/:orderId/total", async (req: Request, res: Response) => {
   if (!isValidParam(req.params.orderId)) {
-    return res.status(400).json({
-      error: "orderId must be provided",
-    });
+    throw new BadRequestError("orderId must be provided");
   }
 
   const total = await getOrderTotal(req.params.orderId, req.user!);
 
   if (total === null) {
-    return res.status(404).json({
-      error: "Order not found",
-    });
+    throw new NotFoundError("Order not found");
   }
 
   return res.status(200).json({ total });
@@ -114,23 +104,17 @@ router.get("/:orderId/total", async (req: Request, res: Response) => {
 
 router.patch("/:orderId/status", async (req: Request, res: Response) => {
   if (!isValidParam(req.params.orderId)) {
-    return res.status(400).json({
-      error: "orderId must be provided",
-    });
+    throw new BadRequestError("orderId must be provided");
   }
 
   if (req.user!.role !== "staff" && req.user!.role !== "admin") {
-    return res.status(403).json({
-      error: "Customers cannot update order status",
-    });
+    throw new ForbiddenError("Customers cannot update order status");
   }
 
   const newStatus = req.body.status;
 
   if (!isValidStatus(newStatus)) {
-    return res.status(400).json({
-      error: "Status is invalid",
-    });
+    throw new BadRequestError("Status is invalid");
   }
 
   const result = await updateOrderStatus(
@@ -140,9 +124,7 @@ router.patch("/:orderId/status", async (req: Request, res: Response) => {
   );
 
   if (!result.success) {
-    return res.status(400).json({
-      error: result.reason,
-    });
+    throw new BadRequestError(result.reason);
   }
 
   return res.status(200).json({
@@ -152,17 +134,13 @@ router.patch("/:orderId/status", async (req: Request, res: Response) => {
 
 router.delete("/:orderId", async (req: Request, res: Response) => {
   if (!isValidParam(req.params.orderId)) {
-    return res.status(400).json({
-      error: "orderId must be provided",
-    });
+    throw new BadRequestError("orderId must be provided");
   }
 
   const result = await cancelOrder(req.params.orderId, req.user!);
 
   if (!result.success) {
-    return res.status(400).json({
-      error: result.reason,
-    });
+    throw new BadRequestError(result.reason);
   }
 
   return res.status(200).json({
