@@ -2,7 +2,6 @@ import express, {
   type Express,
   type Request,
   type Response,
-  type NextFunction,
 } from "express";
 import dotenv from "dotenv";
 import helmet from "helmet";
