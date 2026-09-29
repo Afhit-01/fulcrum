@@ -1,9 +1,8 @@
-import dotenv from "dotenv";
 import type { PaymentBody } from "../types.js";
+import {env} from "../config/env.js"
 
-dotenv.config();
 
-const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
+const paystackSecretKey = env.paystackSecretKey;
 
 const initializePayment = async (body: PaymentBody) => {
   if (!paystackSecretKey) {

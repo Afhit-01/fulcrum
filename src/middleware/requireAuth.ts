@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import dotenv from "dotenv";
+import {env} from "../config/env.js"
 import jwt from "jsonwebtoken";
 import type { JwtPayload } from "../types.js";
 
@@ -13,7 +13,6 @@ declare global {
 }
 /* eslint-enable @typescript-eslint/no-namespace */
 
-dotenv.config();
 
 export const requireAuth = async (
   req: Request,
@@ -35,11 +34,7 @@ export const requireAuth = async (
   }
 
   try {
-    const secret = process.env.JWT_SECRET;
-
-    if (!secret) {
-      throw new Error("JWT_SECRET is not configured");
-    }
+    const secret = env.jwtSecret;
 
     const decoded = jwt.verify(token, secret) as JwtPayload;
 

@@ -1,4 +1,4 @@
-import dotenv from "dotenv";
+import {env} from "../config/env.js"
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import type { JwtPayload } from "../types.js";
@@ -7,8 +7,6 @@ import {
   fetchStaffByEmail,
   insertCustomer as insertCustomerStore,
 } from "../store/authStore.js";
-
-dotenv.config();
 
 type AuthResult =
   | { success: false; reason: string }
@@ -40,7 +38,7 @@ export const loginStaff = async (
     role: staff.role,
   };
 
-  const theSecret = process.env.JWT_SECRET;
+  const theSecret = env.jwtSecret;
   if (!theSecret) {
     throw new Error("JWT_SECRET is not configured");
   }
@@ -106,7 +104,7 @@ export const loginCustomer = async (
     role: "customer",
   };
 
-  const theSecret = process.env.JWT_SECRET;
+  const theSecret = env.jwtSecret;
   if (!theSecret) {
     throw new Error("JWT_SECRET is not configured");
   }

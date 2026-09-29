@@ -1,7 +1,8 @@
 import rateLimit from "express-rate-limit";
+import {env} from "../config/env.js"
 
-const authMax = Number(process.env.AUTH_RATE_LIMIT_MAX ?? 10);
-const apiMax = Number(process.env.API_RATE_LIMIT_MAX ?? 80);
+const authMax = env.authRateLimitMax
+const apiMax = env.apiRateLimitMax
 
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
