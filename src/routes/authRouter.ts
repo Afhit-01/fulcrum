@@ -5,6 +5,7 @@ import {
   loginStaff,
   registerCustomer,
 } from "../services/authService.js";
+import { BadRequestError } from "../errors/AppError.js";
 
 const router = Router();
 
@@ -12,23 +13,17 @@ router.post("/staff/login", async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   if (!isValidEmail(email)) {
-    return res.status(400).json({
-      error: "Invalid credentials",
-    });
+    throw new BadRequestError("Invalid credentials");
   }
 
   if (!password) {
-    return res.status(400).json({
-      error: "Invalid credentials",
-    });
+    throw new BadRequestError("Invalid credentials");
   }
 
   const result = await loginStaff(email, password);
 
   if (!result.success) {
-    return res.status(400).json({
-      error: result.reason,
-    });
+    throw new BadRequestError(result.reason);
   }
 
   res.status(200).json({
@@ -41,23 +36,17 @@ router.post("/customer/register", async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   if (!isValidEmail(email)) {
-    return res.status(400).json({
-      error: "Invalid credentials",
-    });
+    throw new BadRequestError("Invalid credentials");
   }
 
   if (!password) {
-    return res.status(400).json({
-      error: "Invalid credentials",
-    });
+    throw new BadRequestError("Invalid credentials");
   }
 
   const result = await registerCustomer(email, password);
 
   if (!result.success) {
-    return res.status(400).json({
-      error: result.reason,
-    });
+    throw new BadRequestError(result.reason);
   }
 
   res.status(200).json({
@@ -69,23 +58,17 @@ router.post("/customer/login", async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   if (!isValidEmail(email)) {
-    return res.status(400).json({
-      error: "Invalid credentials",
-    });
+    throw new BadRequestError("Invalid credentials");
   }
 
   if (!password) {
-    return res.status(400).json({
-      error: "Invalid credentials",
-    });
+    throw new BadRequestError("Invalid credentials");
   }
 
   const result = await loginCustomer(email, password);
 
   if (!result.success) {
-    return res.status(400).json({
-      error: result.reason,
-    });
+    throw new BadRequestError(result.reason);
   }
 
   res.status(200).json({
