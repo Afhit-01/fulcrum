@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import {env} from "../config/env.js"
+import { env } from "../config/env.js";
 import jwt from "jsonwebtoken";
 import type { JwtPayload } from "../types.js";
 
@@ -12,7 +12,6 @@ declare global {
   }
 }
 /* eslint-enable @typescript-eslint/no-namespace */
-
 
 export const requireAuth = async (
   req: Request,

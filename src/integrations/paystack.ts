@@ -1,6 +1,5 @@
 import type { PaymentBody } from "../types.js";
-import {env} from "../config/env.js"
-
+import { env } from "../config/env.js";
 
 const paystackSecretKey = env.paystackSecretKey;
 

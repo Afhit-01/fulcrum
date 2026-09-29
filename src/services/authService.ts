@@ -1,4 +1,4 @@
-import {env} from "../config/env.js"
+import { env } from "../config/env.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import type { JwtPayload } from "../types.js";
