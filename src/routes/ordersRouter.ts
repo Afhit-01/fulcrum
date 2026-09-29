@@ -21,6 +21,7 @@ import {
 import { validateBody } from "../middleware/validateBody.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { checkIdempotency } from "../middleware/idempotency.js";
+import { NotFoundError } from "../errors/AppError.js";
 
 const router = Router();
 
@@ -87,9 +88,7 @@ router.get("/:orderId", async (req: Request, res: Response) => {
   const order = await getOrderById(req.params.orderId, req.user!);
 
   if (!order) {
-    return res.status(404).json({
-      error: "Order not found",
-    });
+    throw new NotFoundError();
   }
 
   return res.status(200).json(order);

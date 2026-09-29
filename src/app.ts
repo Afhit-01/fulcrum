@@ -29,7 +29,12 @@ app.use("/orders", apiLimiter, ordersRouter);
 app.use("/return", apiLimiter, returnsRouter);
 app.use("/refunds", apiLimiter, refundsRouter);
 
+// app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
+//   console.log(err);
+//   res.status(500).json({ error: "Something went wrong" });
+// });
+
 app.use(notFound);
-app.use(errorHandler)
+app.use(errorHandler);
 
 export default app;
