@@ -5,6 +5,13 @@ export class AppError extends Error {
     public code: string = "APP_ERROR",
   ) {
     super(message);
+    this.name = new.target.name;
+  }
+}
+
+export class UnauthorizedError extends AppError {
+  constructor(msg = "Unauthorized") {
+    super(401, msg, "UNAUTHORIZED");
   }
 }
 export class NotFoundError extends AppError {

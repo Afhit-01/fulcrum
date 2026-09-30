@@ -7,115 +7,54 @@ import {
   fetchStaffByEmail,
   insertCustomer as insertCustomerStore,
 } from "../store/authStore.js";
+import { ConflictError, UnauthorizedError } from "../errors/AppError.js";
 
-type AuthResult =
-  | { success: false; reason: string }
-  | { success: true; token: string; message: string };
+const isUniqueViolation = (err: unknown): boolean =>
+  typeof err === "object" &&
+  err !== null &&
+  "code" in err &&
+  err.code === "23505";
 
-export const loginStaff = async (
-  email: string,
-  password: string,
-): Promise<AuthResult> => {
-  const staff = await fetchStaffByEmail(email);
-
-  if (!staff) {
-    return {
-      success: false,
-      reason: "Invalid credentials",
-    };
-  }
-
-  const isValidPassword = await bcrypt.compare(password, staff.passwordHash);
-  if (!isValidPassword) {
-    return {
-      success: false,
-      reason: "Invalid credentials",
-    };
-  }
-
-  const payload: JwtPayload = {
-    id: staff.id,
-    role: staff.role,
-  };
-
-  const theSecret = env.jwtSecret;
-  if (!theSecret) {
+const signToken = (payload: JwtPayload): string => {
+  if (!env.jwtSecret) {
     throw new Error("JWT_SECRET is not configured");
   }
+  return jwt.sign(payload, env.jwtSecret, { expiresIn: "1h" });
+};
 
-  const token = jwt.sign(payload, theSecret, {
-    expiresIn: "1h",
-  });
-
+export const loginStaff = async (email: string, password: string) => {
+  const staff = await fetchStaffByEmail(email);
+  if (!staff || !(await bcrypt.compare(password, staff.passwordHash))) {
+    throw new UnauthorizedError("Invalid credentials");
+  }
   return {
-    success: true,
-    token,
+    token: signToken({ id: staff.id, role: staff.role }),
     message: "Staff logged in successfully",
   };
 };
 
-export const registerCustomer = async (
-  email: string,
-  password: string,
-): Promise<
-  { success: false; reason: string } | { success: true; message: string }
-> => {
-  try {
-    const saltRounds = 12;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-    const newCustomer = await insertCustomerStore(email, hashedPassword);
-
-    return {
-      success: true,
-      message: `Customer with email ${newCustomer.email} has been registered successfully`,
-    };
-  } catch {
-    return {
-      success: false,
-      reason: "Customer already exists or registration failed",
-    };
-  }
-};
-
-export const loginCustomer = async (
-  email: string,
-  password: string,
-): Promise<AuthResult> => {
+export const loginCustomer = async (email: string, password: string) => {
   const customer = await fetchCustomerByEmail(email);
-
-  if (!customer) {
-    return {
-      success: false,
-      reason: "Invalid credentials",
-    };
+  if (!customer || !(await bcrypt.compare(password, customer.passwordHash))) {
+    throw new UnauthorizedError("Invalid credentials");
   }
-
-  const isValidPassword = await bcrypt.compare(password, customer.passwordHash);
-  if (!isValidPassword) {
-    return {
-      success: false,
-      reason: "Invalid credentials",
-    };
-  }
-
-  const payload: JwtPayload = {
-    id: customer.id,
-    role: "customer",
-  };
-
-  const theSecret = env.jwtSecret;
-  if (!theSecret) {
-    throw new Error("JWT_SECRET is not configured");
-  }
-
-  const token = jwt.sign(payload, theSecret, {
-    expiresIn: "1h",
-  });
-
   return {
-    success: true,
-    token,
+    token: signToken({ id: customer.id, role: "customer" }),
     message: "Customer logged in successfully",
   };
+};
+
+export const registerCustomer = async (email: string, password: string) => {
+  const hashedPassword = await bcrypt.hash(password, 12);
+  try {
+    const newCustomer = await insertCustomerStore(email, hashedPassword);
+    return {
+      message: `Customer with email ${newCustomer.email} has been registered successfully`,
+    };
+  } catch (err: unknown) {
+    if (isUniqueViolation(err)) {
+      throw new ConflictError("Customer already exists");
+    }
+    throw err;
+  }
 };
