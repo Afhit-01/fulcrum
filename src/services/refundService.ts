@@ -78,7 +78,9 @@ export const completeRefund = async (
   const refund = await getRefundByIdFromDB(refundId);
 
   if (!refund) {
-    throw new NotFoundError(`Refund request with id ${refundId} does not exist`);
+    throw new NotFoundError(
+      `Refund request with id ${refundId} does not exist`,
+    );
   }
 
   if (refund.status !== "pending") {

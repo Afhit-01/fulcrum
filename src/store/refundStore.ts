@@ -154,7 +154,7 @@ export const completeRefundTransaction = async (
       [refundId],
     );
 
-     if (refundResult.rowCount === 0) {
+    if (refundResult.rowCount === 0) {
       throw new NotFoundError("Refund not found");
     }
 
