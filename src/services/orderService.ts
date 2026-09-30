@@ -1,4 +1,10 @@
-import type { Order, OrderItem, OrderStatus, JwtPayload, UpdateOrderStatusResult } from "../types.js";
+import type {
+  Order,
+  OrderItem,
+  OrderStatus,
+  JwtPayload,
+  UpdateOrderStatusResult,
+} from "../types.js";
 
 import {
   BadRequestError,
