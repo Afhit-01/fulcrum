@@ -10,6 +10,12 @@ import {
 
 import type { Refund, JwtPayload } from "../types.js";
 
+import {
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+} from "../errors/AppError.js";
+
 export const processRefund = async (
   returnId: string,
   amount: number,
@@ -64,64 +70,34 @@ export const completeRefund = async (
   refundId: string,
   outcome: "completed" | "failed",
   user: JwtPayload,
-): Promise<{ success: true } | { success: false; reason: string }> => {
+): Promise<void> => {
   if (user.role !== "staff" && user.role !== "admin") {
-    return {
-      success: false,
-      reason: "Only staff or admin can complete refunds",
-    };
+    throw new ForbiddenError("Only staff or admin can complete refunds");
   }
 
   const refund = await getRefundByIdFromDB(refundId);
 
   if (!refund) {
-    return {
-      success: false,
-      reason: `Refund request with id ${refundId} does not exist`,
-    };
+    throw new NotFoundError(`Refund request with id ${refundId} does not exist`);
   }
 
   if (refund.status !== "pending") {
-    return {
-      success: false,
-      reason: `Cannot complete a refund already at status ${refund.status}`,
-    };
+    throw new ConflictError(
+      `Cannot complete a refund already at status ${refund.status}`,
+    );
   }
 
   if (outcome === "failed") {
     await updateRefundStatusInDb(refundId, "failed");
-
-    return {
-      success: true,
-    };
+    return;
   }
 
-  try {
-    const completedTime = new Date().toISOString();
-
-    await completeRefundTransaction(
-      refundId,
-      refund.returnRequestId,
-      refund.orderId,
-      completedTime,
-    );
-
-    return {
-      success: true,
-    };
-  } catch (error) {
-    if (error instanceof Error) {
-      return {
-        success: false,
-        reason: error.message,
-      };
-    }
-
-    return {
-      success: false,
-      reason: "Failed to complete refund",
-    };
-  }
+  await completeRefundTransaction(
+    refundId,
+    refund.returnRequestId,
+    refund.orderId,
+    new Date().toISOString(),
+  );
 };
 
 export const getRefunds = async (user: JwtPayload): Promise<Refund[]> => {

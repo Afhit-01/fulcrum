@@ -1,5 +1,6 @@
 import pool from "../db/client.js";
 import type { Refund, RefundStatus } from "../types.js";
+import { ConflictError, NotFoundError } from "../errors/AppError.js";
 
 export const insertRefund = async (
   returnRequestId: string,
@@ -153,8 +154,8 @@ export const completeRefundTransaction = async (
       [refundId],
     );
 
-    if (refundResult.rowCount === 0) {
-      throw new Error("Refund not found");
+     if (refundResult.rowCount === 0) {
+      throw new NotFoundError("Refund not found");
     }
 
     const returnResult = await client.query(
@@ -168,7 +169,7 @@ export const completeRefundTransaction = async (
     );
 
     if (returnResult.rowCount === 0) {
-      throw new Error("Return request not found");
+      throw new NotFoundError("Return request not found");
     }
 
     const orderResult = await client.query(
@@ -182,7 +183,7 @@ export const completeRefundTransaction = async (
     );
 
     if (orderResult.rowCount === 0) {
-      throw new Error("Order not found");
+      throw new NotFoundError("Order not found");
     }
 
     const refundStatus = refundResult.rows[0].status;
@@ -192,19 +193,19 @@ export const completeRefundTransaction = async (
     //Re-check the state inside the transaction to protect against stale data and concurrent requests even if the service checked the states earlier.
 
     if (refundStatus !== "pending") {
-      throw new Error(
+      throw new ConflictError(
         `Cannot complete a refund already at status ${refundStatus}`,
       );
     }
 
     if (returnStatus !== "received") {
-      throw new Error(
+      throw new ConflictError(
         `Cannot mark a return as refunded from status ${returnStatus}`,
       );
     }
 
     if (orderStatus !== "return_requested") {
-      throw new Error(
+      throw new ConflictError(
         `Cannot mark an order as returned from status ${orderStatus}`,
       );
     }
