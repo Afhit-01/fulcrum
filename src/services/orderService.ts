@@ -1,10 +1,4 @@
-import type {
-  Order,
-  OrderItem,
-  OrderStatus,
-  JwtPayload,
-  UpdateOrderStatusResult,
-} from "../types.js";
+import type { Order, OrderItem, OrderStatus, JwtPayload } from "../types.js";
 
 import {
   BadRequestError,
@@ -85,39 +79,25 @@ export const updateOrderStatus = async (
   id: string,
   newStatus: OrderStatus,
   user: JwtPayload,
-): Promise<UpdateOrderStatusResult> => {
+): Promise<void> => {
   // Only staff/admin can manually update order status.
   if (user.role !== "staff" && user.role !== "admin") {
-    return {
-      success: false,
-      kind: "forbidden",
-      reason: "Only staff or admin can update order status",
-    };
+    throw new ForbiddenError("Only staff or admin can update order status");
   }
 
   const order = await getOrderByIdFromDb(id);
 
   if (!order) {
-    return {
-      success: false,
-      kind: "not_found",
-      reason: `Order with id ${id} does not exist`,
-    };
+    throw new NotFoundError(`Order with id ${id} does not exist`);
   }
 
-  const isValid = validTransitions[order.status].includes(newStatus);
-
-  if (!isValid) {
-    return {
-      success: false,
-      kind: "invalid_transition",
-      reason: `Cannot change status from ${order.status} to ${newStatus}`,
-    };
+  if (!validTransitions[order.status].includes(newStatus)) {
+    throw new ConflictError(
+      `Cannot change status from ${order.status} to ${newStatus}`,
+    );
   }
 
   await updateOrderStatusInDb(id, newStatus);
-
-  return { success: true };
 };
 
 export const getOrderTotal = async (

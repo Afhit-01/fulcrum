@@ -23,7 +23,6 @@ import {
   BadRequestError,
   ForbiddenError,
   NotFoundError,
-  ConflictError,
 } from "../errors/AppError.js";
 
 const router = Router();
@@ -116,22 +115,7 @@ router.patch("/:orderId/status", async (req: Request, res: Response) => {
     throw new BadRequestError("Status is invalid");
   }
 
-  const result = await updateOrderStatus(
-    req.params.orderId,
-    newStatus,
-    req.user!,
-  );
-
-  if (!result.success) {
-    switch (result.kind) {
-      case "forbidden":
-        throw new ForbiddenError(result.reason);
-      case "not_found":
-        throw new NotFoundError(result.reason);
-      default:
-        throw new ConflictError(result.reason);
-    }
-  }
+  await updateOrderStatus(req.params.orderId, newStatus, req.user!);
   return res.status(200).json({
     message: "Status updated",
   });

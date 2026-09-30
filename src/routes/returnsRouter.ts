@@ -17,10 +17,48 @@ import { processRefund } from "../services/refundService.js";
 
 import { requireAuth } from "../middleware/requireAuth.js";
 import { checkIdempotency } from "../middleware/idempotency.js";
+import { BadRequestError, NotFoundError } from "../errors/AppError.js";
 
 const router = Router();
 
 router.use(requireAuth);
+
+const readOrderAndProduct = (req: Request) => {
+  const { orderId, productId } = req.params;
+
+  if (!isValidParam(orderId)) {
+    throw new BadRequestError("orderId must be provided");
+  }
+
+  if (!isValidParam(productId)) {
+    throw new BadRequestError("productId must be provided");
+  }
+
+  return { orderId, productId };
+};
+
+const findReturnItem = async (
+  orderId: string,
+  productId: string,
+  req: Request,
+) => {
+  const customerIdFilter =
+    req.user!.role === "customer" ? req.user!.id : undefined;
+
+  const item = await getReturnByOrderAndProductFromDb(
+    orderId,
+    productId,
+    customerIdFilter,
+  );
+
+  if (!item) {
+    throw new NotFoundError(
+      "Request with the provided IDs cannot be found. Kindly check if there was a mismatch.",
+    );
+  }
+
+  return { item, customerIdFilter };
+};
 
 router.get("/", async (req: Request, res: Response) => {
   const returns = await getReturns(req.user!);
@@ -31,17 +69,13 @@ router.get("/:returnId", async (req: Request, res: Response) => {
   const { returnId } = req.params;
 
   if (!isValidParam(returnId)) {
-    return res.status(400).json({
-      error: "returnId must be provided",
-    });
+    throw new BadRequestError("returnId must be provided");
   }
 
   const returnRequest = await getReturnById(returnId, req.user!);
 
   if (!returnRequest) {
-    return res.status(404).json({
-      error: "Return request not found",
-    });
+    throw new NotFoundError("Return request not found");
   }
 
   return res.status(200).json(returnRequest);
@@ -50,268 +84,125 @@ router.get("/:returnId", async (req: Request, res: Response) => {
 router.patch(
   "/:orderId/:productId/review",
   async (req: Request, res: Response) => {
-    try {
-      const { orderId, productId } = req.params;
+    const { orderId, productId } = readOrderAndProduct(req);
+    const review = req.body?.review;
 
-      if (!isValidParam(orderId)) {
-        return res.status(400).json({
-          error: "orderId must be provided",
-        });
-      }
-
-      if (!isValidParam(productId)) {
-        return res.status(400).json({
-          error: "productId must be provided",
-        });
-      }
-
-      const { review } = req.body;
-
-      if (!review) {
-        return res.status(400).json({
-          error: "Kindly provide a review decision",
-        });
-      }
-
-      if (Array.isArray(review)) {
-        return res.status(400).json({
-          error: "review must be a string",
-        });
-      }
-
-      if (review !== "approved" && review !== "rejected") {
-        return res.status(400).json({
-          error: "review must be either 'approved' or 'rejected'",
-        });
-      }
-
-      const customerIdFilter =
-        req.user!.role === "customer" ? req.user!.id : undefined;
-
-      const item = await getReturnByOrderAndProductFromDb(
-        orderId,
-        productId,
-        customerIdFilter,
-      );
-
-      if (!item) {
-        return res.status(404).json({
-          error:
-            "Request with the provided IDs cannot be found. Kindly check if there was a mismatch.",
-        });
-      }
-
-      const result = await reviewReturn(item.id, review, req.user!);
-
-      if (!result.success) {
-        return res.status(403).json({
-          error: result.reason,
-        });
-      }
-
-      const updatedItem = await getReturnByOrderAndProductFromDb(
-        orderId,
-        productId,
-        customerIdFilter,
-      );
-
-      return res.status(200).json({
-        message: `Return request ${review} successfully`,
-        returnRequest: updatedItem,
-      });
-    } catch {
-      return res.status(500).json({
-        error: "Internal server error",
-      });
+    if (!review) {
+      throw new BadRequestError("Kindly provide a review decision");
     }
+
+    if (Array.isArray(review)) {
+      throw new BadRequestError("review must be a string");
+    }
+
+    if (review !== "approved" && review !== "rejected") {
+      throw new BadRequestError(
+        "review must be either 'approved' or 'rejected'",
+      );
+    }
+
+    const { item, customerIdFilter } = await findReturnItem(
+      orderId,
+      productId,
+      req,
+    );
+
+    await reviewReturn(item.id, review, req.user!);
+
+    const updatedItem = await getReturnByOrderAndProductFromDb(
+      orderId,
+      productId,
+      customerIdFilter,
+    );
+
+    return res.status(200).json({
+      message: `Return request ${review} successfully`,
+      returnRequest: updatedItem,
+    });
   },
 );
 
 router.patch(
   "/:orderId/:productId/ship",
   async (req: Request, res: Response) => {
-    try {
-      const { orderId, productId } = req.params;
+    const { orderId, productId } = readOrderAndProduct(req);
 
-      if (!isValidParam(orderId)) {
-        return res.status(400).json({
-          error: "orderId must be provided",
-        });
-      }
+    const { item, customerIdFilter } = await findReturnItem(
+      orderId,
+      productId,
+      req,
+    );
 
-      if (!isValidParam(productId)) {
-        return res.status(400).json({
-          error: "productId must be provided",
-        });
-      }
+    await markReturnInTransit(item.id, req.user!);
 
-      const customerIdFilter =
-        req.user!.role === "customer" ? req.user!.id : undefined;
+    const updatedItem = await getReturnByOrderAndProductFromDb(
+      orderId,
+      productId,
+      customerIdFilter,
+    );
 
-      const item = await getReturnByOrderAndProductFromDb(
-        orderId,
-        productId,
-        customerIdFilter,
-      );
-
-      if (!item) {
-        return res.status(404).json({
-          error:
-            "Request with the provided IDs cannot be found. Kindly check if there was a mismatch.",
-        });
-      }
-
-      const result = await markReturnInTransit(item.id, req.user!);
-
-      if (!result.success) {
-        return res.status(403).json({
-          error: result.reason,
-        });
-      }
-
-      const updatedItem = await getReturnByOrderAndProductFromDb(
-        orderId,
-        productId,
-        customerIdFilter,
-      );
-
-      return res.status(200).json({
-        message: "Return marked as in transit successfully",
-        returnRequest: updatedItem,
-      });
-    } catch {
-      return res.status(500).json({
-        error: "Internal server error",
-      });
-    }
+    return res.status(200).json({
+      message: "Return marked as in transit successfully",
+      returnRequest: updatedItem,
+    });
   },
 );
 
 router.patch(
   "/:orderId/:productId/receive",
   async (req: Request, res: Response) => {
-    try {
-      const { orderId, productId } = req.params;
+    const { orderId, productId } = readOrderAndProduct(req);
 
-      if (!isValidParam(orderId)) {
-        return res.status(400).json({
-          error: "orderId must be provided",
-        });
-      }
+    const { item, customerIdFilter } = await findReturnItem(
+      orderId,
+      productId,
+      req,
+    );
 
-      if (!isValidParam(productId)) {
-        return res.status(400).json({
-          error: "productId must be provided",
-        });
-      }
+    await receiveReturn(item.id, req.user!);
 
-      const customerIdFilter =
-        req.user!.role === "customer" ? req.user!.id : undefined;
+    const updatedItem = await getReturnByOrderAndProductFromDb(
+      orderId,
+      productId,
+      customerIdFilter,
+    );
 
-      const item = await getReturnByOrderAndProductFromDb(
-        orderId,
-        productId,
-        customerIdFilter,
-      );
-
-      if (!item) {
-        return res.status(404).json({
-          error:
-            "Request with the provided IDs cannot be found. Kindly check if there was a mismatch.",
-        });
-      }
-
-      const result = await receiveReturn(item.id, req.user!);
-
-      if (!result.success) {
-        return res.status(403).json({
-          error: result.reason,
-        });
-      }
-
-      const updatedItem = await getReturnByOrderAndProductFromDb(
-        orderId,
-        productId,
-        customerIdFilter,
-      );
-
-      return res.status(200).json({
-        message: "Return received successfully",
-        returnRequest: updatedItem,
-      });
-    } catch {
-      return res.status(500).json({
-        error: "Internal server error",
-      });
-    }
+    return res.status(200).json({
+      message: "Return received successfully",
+      returnRequest: updatedItem,
+    });
   },
 );
 
-// This wildcard route must stay below /review, /ship, and /receive above.
-// :quantity is just a placeholder at the routing layer, Express does not
-// know it should only match digits, so it will happily swallow a request
-// for /review or /ship if it is registered first, and the numeric check
-// inside this handler runs too late to save it.
 router.patch(
   "/:orderId/:productId/:quantity",
   async (req: Request, res: Response) => {
-    try {
-      const { orderId, productId, quantity } = req.params;
+    const { orderId, productId } = readOrderAndProduct(req);
+    const { quantity } = req.params;
 
-      if (!isValidParam(orderId)) {
-        return res.status(400).json({
-          error: "orderId must be provided",
-        });
-      }
-
-      if (!isValidParam(productId)) {
-        return res.status(400).json({
-          error: "productId must be provided",
-        });
-      }
-
-      if (!isNumericString(quantity)) {
-        return res.status(400).json({
-          error: "quantity must be numeric",
-        });
-      }
-
-      const { reason } = req.body;
-
-      if (!reason) {
-        return res.status(400).json({
-          error: "Kindly provide a reason for return",
-        });
-      }
-
-      if (Array.isArray(reason)) {
-        return res.status(400).json({
-          error: "reason must be a string",
-        });
-      }
-
-      const result = await returnOrder(
-        req.user!,
-        orderId,
-        productId,
-        Number(quantity),
-        reason,
-      );
-
-      if (!result.success) {
-        return res.status(400).json({
-          error: result.reason,
-        });
-      }
-
-      return res.status(200).json({
-        message: result.message,
-      });
-    } catch {
-      return res.status(500).json({
-        error: "Internal server error",
-      });
+    if (!isNumericString(quantity)) {
+      throw new BadRequestError("quantity must be numeric");
     }
+
+    const reason = req.body?.reason;
+
+    if (!reason) {
+      throw new BadRequestError("Kindly provide a reason for return");
+    }
+
+    if (typeof reason !== "string") {
+      throw new BadRequestError("reason must be a string");
+    }
+
+    const result = await returnOrder(
+      req.user!,
+      orderId,
+      productId,
+      Number(quantity),
+      reason,
+    );
+
+    return res.status(200).json({ message: result.message });
   },
 );
 
@@ -319,62 +210,21 @@ router.post(
   "/:orderId/:productId/refund",
   checkIdempotency,
   async (req: Request, res: Response) => {
-    try {
-      const { orderId, productId } = req.params;
+    const { orderId, productId } = readOrderAndProduct(req);
+    const refundAmount = req.body?.refundAmount;
 
-      if (!isValidParam(orderId)) {
-        return res.status(400).json({
-          error: "orderId must be provided",
-        });
-      }
-
-      if (!isValidParam(productId)) {
-        return res.status(400).json({
-          error: "productId must be provided",
-        });
-      }
-
-      const { refundAmount } = req.body;
-
-      if (typeof refundAmount !== "number") {
-        return res.status(400).json({
-          error: "refundAmount must be a number",
-        });
-      }
-
-      const customerIdFilter =
-        req.user!.role === "customer" ? req.user!.id : undefined;
-
-      const item = await getReturnByOrderAndProductFromDb(
-        orderId,
-        productId,
-        customerIdFilter,
-      );
-
-      if (!item) {
-        return res.status(404).json({
-          error:
-            "Request with the provided IDs cannot be found. Kindly check if there was a mismatch.",
-        });
-      }
-
-      const result = await processRefund(item.id, refundAmount, req.user!);
-
-      if (!result.success) {
-        return res.status(403).json({
-          error: result.reason,
-        });
-      }
-
-      return res.status(200).json({
-        message: "Refund request created successfully",
-        refund: result.refund,
-      });
-    } catch {
-      return res.status(500).json({
-        error: "Internal server error",
-      });
+    if (typeof refundAmount !== "number") {
+      throw new BadRequestError("refundAmount must be a number");
     }
+
+    const { item } = await findReturnItem(orderId, productId, req);
+
+    const refund = await processRefund(item.id, refundAmount, req.user!);
+
+    return res.status(200).json({
+      message: "Refund request created successfully",
+      refund,
+    });
   },
 );
 

@@ -84,11 +84,3 @@ export interface PaymentBody {
   email: string;
   reference?: string;
 }
-
-export type UpdateOrderStatusResult =
-  | { success: true }
-  | {
-      success: false;
-      kind: "forbidden" | "not_found" | "invalid_transition";
-      reason: string;
-    };

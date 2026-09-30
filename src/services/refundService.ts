@@ -14,56 +14,42 @@ import {
   ConflictError,
   ForbiddenError,
   NotFoundError,
+  BadRequestError,
 } from "../errors/AppError.js";
 
 export const processRefund = async (
   returnId: string,
   amount: number,
   user: JwtPayload,
-): Promise<
-  { success: true; refund: Refund } | { success: false; reason: string }
-> => {
+): Promise<Refund> => {
   if (user.role !== "staff" && user.role !== "admin") {
-    return {
-      success: false,
-      reason: "Only staff or admin can process refunds",
-    };
+    throw new ForbiddenError("Only staff or admin can process refunds");
   }
 
   const returnRequest = await getReturnByIdFromDB(returnId);
 
   if (!returnRequest) {
-    return {
-      success: false,
-      reason: `Return request with id ${returnId} does not exist`,
-    };
+    throw new NotFoundError(
+      `Return request with id ${returnId} does not exist`,
+    );
   }
 
   if (returnRequest.status !== "received") {
-    return {
-      success: false,
-      reason: `Cannot process a refund for a return at status ${returnRequest.status}`,
-    };
+    throw new ConflictError(
+      `Cannot process a refund for a return at status ${returnRequest.status}`,
+    );
   }
 
   if (amount <= 0) {
-    return {
-      success: false,
-      reason: "Refund amount must be greater than 0",
-    };
+    throw new BadRequestError("Refund amount must be greater than 0");
   }
 
-  const refund = await insertRefund(
+  return await insertRefund(
     returnRequest.id,
     returnRequest.orderId,
     returnRequest.productId,
     amount,
   );
-
-  return {
-    success: true,
-    refund,
-  };
 };
 
 export const completeRefund = async (
