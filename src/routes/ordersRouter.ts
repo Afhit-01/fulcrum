@@ -10,8 +10,6 @@ import {
   getOrderById,
 } from "../services/orderService.js";
 
-import type { OrderStatus } from "../types.js";
-
 import {
   isCreateOrderPayload,
   isValidStatus,
@@ -25,6 +23,7 @@ import {
   BadRequestError,
   ForbiddenError,
   NotFoundError,
+  ConflictError,
 } from "../errors/AppError.js";
 
 const router = Router();
@@ -42,21 +41,21 @@ router.post(
 
     const { items } = req.body;
 
-    const result = await createOrder(req.user!, items);
+    const order = await createOrder(req.user!, items);
 
-    if (!result.success) {
-      throw new BadRequestError(result.reason);
-    }
-
-    return res.status(201).json(result.order);
+    return res.status(201).json(order);
   },
 );
 
 router.get("/", async (req: Request, res: Response) => {
-  const status = req.query.status as OrderStatus | undefined;
+  const status = req.query.status;
 
   if (!status) {
     throw new BadRequestError("Status query param is required");
+  }
+
+  if (!isValidStatus(status)) {
+    throw new BadRequestError("Status is invalid");
   }
 
   const orders = await getOrdersByStatus(status, req.user!);
@@ -111,7 +110,7 @@ router.patch("/:orderId/status", async (req: Request, res: Response) => {
     throw new ForbiddenError("Customers cannot update order status");
   }
 
-  const newStatus = req.body.status;
+  const newStatus = req.body?.status;
 
   if (!isValidStatus(newStatus)) {
     throw new BadRequestError("Status is invalid");
@@ -124,9 +123,15 @@ router.patch("/:orderId/status", async (req: Request, res: Response) => {
   );
 
   if (!result.success) {
-    throw new BadRequestError(result.reason);
+    switch (result.kind) {
+      case "forbidden":
+        throw new ForbiddenError(result.reason);
+      case "not_found":
+        throw new NotFoundError(result.reason);
+      default:
+        throw new ConflictError(result.reason);
+    }
   }
-
   return res.status(200).json({
     message: "Status updated",
   });
@@ -136,12 +141,7 @@ router.delete("/:orderId", async (req: Request, res: Response) => {
   if (!isValidParam(req.params.orderId)) {
     throw new BadRequestError("orderId must be provided");
   }
-
-  const result = await cancelOrder(req.params.orderId, req.user!);
-
-  if (!result.success) {
-    throw new BadRequestError(result.reason);
-  }
+  await cancelOrder(req.params.orderId, req.user!);
 
   return res.status(200).json({
     message: "Order cancelled",

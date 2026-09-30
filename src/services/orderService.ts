@@ -1,4 +1,11 @@
-import type { Order, OrderItem, OrderStatus, JwtPayload } from "../types.js";
+import type { Order, OrderItem, OrderStatus, JwtPayload, UpdateOrderStatusResult } from "../types.js";
+
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+} from "../errors/AppError.js";
 
 import {
   getOrderByIdFromDb,
@@ -27,14 +34,9 @@ export const validTransitions: Record<OrderStatus, OrderStatus[]> = {
 export const createOrder = async (
   user: JwtPayload,
   items: OrderItem[],
-): Promise<
-  { success: true; order: Order } | { success: false; reason: string }
-> => {
+): Promise<Order> => {
   if (items.length === 0) {
-    return {
-      success: false,
-      reason: "Order cart cannot be empty",
-    };
+    throw new BadRequestError("Order cart cannot be empty");
   }
 
   const hasNegatives = items.some(
@@ -42,26 +44,15 @@ export const createOrder = async (
   );
 
   if (hasNegatives) {
-    return {
-      success: false,
-      reason: "Quantity or UnitPrice must be greater than 0",
-    };
+    throw new BadRequestError("Quantity or UnitPrice must be greater than 0");
   }
 
   // Only customers can create orders.
   if (user.role !== "customer") {
-    return {
-      success: false,
-      reason: "Only customers can place orders",
-    };
+    throw new ForbiddenError("Only customers can place orders");
   }
 
-  const order = await insertOrder(user.id, "Customer", items);
-
-  return {
-    success: true,
-    order,
-  };
+  return await insertOrder(user.id, "Customer", items);
 };
 
 export const getOrderById = async (
@@ -88,11 +79,12 @@ export const updateOrderStatus = async (
   id: string,
   newStatus: OrderStatus,
   user: JwtPayload,
-): Promise<{ success: true } | { success: false; reason: string }> => {
+): Promise<UpdateOrderStatusResult> => {
   // Only staff/admin can manually update order status.
   if (user.role !== "staff" && user.role !== "admin") {
     return {
       success: false,
+      kind: "forbidden",
       reason: "Only staff or admin can update order status",
     };
   }
@@ -102,6 +94,7 @@ export const updateOrderStatus = async (
   if (!order) {
     return {
       success: false,
+      kind: "not_found",
       reason: `Order with id ${id} does not exist`,
     };
   }
@@ -111,15 +104,14 @@ export const updateOrderStatus = async (
   if (!isValid) {
     return {
       success: false,
+      kind: "invalid_transition",
       reason: `Cannot change status from ${order.status} to ${newStatus}`,
     };
   }
 
   await updateOrderStatusInDb(id, newStatus);
 
-  return {
-    success: true,
-  };
+  return { success: true };
 };
 
 export const getOrderTotal = async (
@@ -143,31 +135,21 @@ export const getOrderTotal = async (
 export const cancelOrder = async (
   id: string,
   user: JwtPayload,
-): Promise<{ success: true } | { success: false; reason: string }> => {
+): Promise<void> => {
   // Customers can only cancel their own orders. Staff/admin can cancel any eligible order.
   const customerIdFilter = user.role === "customer" ? user.id : undefined;
 
   const order = await getOrderByIdFromDb(id, customerIdFilter);
 
   if (!order) {
-    return {
-      success: false,
-      reason: "Order not found",
-    };
+    throw new NotFoundError("Order not found");
   }
 
-  if (order.status === "pending" || order.status === "confirmed") {
-    await updateOrderStatusInDb(id, "cancelled");
-
-    return {
-      success: true,
-    };
+  if (order.status !== "pending" && order.status !== "confirmed") {
+    throw new ConflictError("Can't cancel at this stage");
   }
 
-  return {
-    success: false,
-    reason: "Can't cancel at this stage",
-  };
+  await updateOrderStatusInDb(id, "cancelled");
 };
 
 export const getOrderReport = async () => {
