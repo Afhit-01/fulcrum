@@ -54,6 +54,58 @@ export const createReturnRequestTransaction = async (
     };
   });
 
+export const rejectReturnTransaction = async (
+  returnId: string,
+): Promise<void> =>
+  withTransaction(async (client) => {
+    const returnResult = await client.query(
+      `SELECT status, order_id FROM return_requests WHERE  id = $1 FOR UPDATE;`,
+      [returnId],
+    );
+
+    if (returnResult.rowCount === 0) {
+      throw new NotFoundError("Return request not found");
+    }
+
+    const { status: returnStatus, order_id: orderId } = returnResult.rows[0];
+
+    if (returnStatus !== "pending") {
+      throw new ConflictError(`Cannot move from ${returnStatus} to rejected`);
+    }
+
+    const orderResult = await client.query(
+      `
+      SELECT status FROM orders WHERE id = $1 FOR UPDATE
+      `,
+      [orderId],
+    );
+
+    if (orderResult.rowCount === 0) {
+      throw new NotFoundError("Return request not found");
+    }
+
+    const orderStatus = orderResult.rows[0].status;
+
+    if (orderStatus !== "return_requested") {
+      throw new ConflictError(
+        `Cannot change order status from ${orderStatus} to delivered`,
+      );
+    }
+    await client.query(
+      `
+      UPDATE return_requests SET status = $1 WHERE id = $2;
+      `,
+      ["rejected", returnId],
+    );
+
+    await client.query(
+      `
+      UPDATE orders SET status = $1 WHERE id = $2;
+      `,
+      ["delivered", orderId],
+    );
+  });
+
 export const getReturnByIdFromDB = async (
   id: string,
   customerId?: string,
