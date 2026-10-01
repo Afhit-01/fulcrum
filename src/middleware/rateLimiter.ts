@@ -1,26 +1,24 @@
 import rateLimit from "express-rate-limit";
 import { env } from "../config/env.js";
+import { TooManyRequestsError } from "../errors/AppError.js";
 
-const authMax = env.authRateLimitMax;
-const apiMax = env.apiRateLimitMax;
+const buildLimiter = (max: number, message: string) =>
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (_req, _res, next) => next(new TooManyRequestsError(message)),
+  });
 
-export const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: authMax,
-  message: {
-    error:
-      "Too many authentication attempts. Please try again after 15 minutes.",
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+export const authLimiter = buildLimiter(
+  env.authRateLimitMax,
+  "Too many authentication attempts. Please try again after 15 minutes.",
+);
 
-export const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: apiMax,
-  message: { error: "Too many requests. Please try again later." },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+export const apiLimiter = buildLimiter(
+  env.apiRateLimitMax,
+  "Too many requests. Please try again later.",
+);
 
 // TO-DO: switch to rate-limit-redis
