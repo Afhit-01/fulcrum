@@ -76,10 +76,10 @@ export const completeRefund = async (
   }
 
   if (outcome === "failed") {
-    const updated = await failPendingRefundInDB(refundId)
+    const updated = await failPendingRefundInDB(refundId);
 
     if (!updated) {
-      throw new ConflictError("Refund is no longer pending")
+      throw new ConflictError("Refund is no longer pending");
     }
     return;
   }
