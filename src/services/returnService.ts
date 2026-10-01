@@ -2,7 +2,7 @@ import { getOrderById } from "./orderService.js";
 
 import {
   getReturnByIdFromDB,
-  updateReturnRequestInDB,
+  transitionReturnStatusInDb,
   getReturnsFromDb,
   createReturnRequestTransaction,
   rejectReturnTransaction,
@@ -48,6 +48,25 @@ const loadReturn = async (returnId: string): Promise<ReturnRequest> => {
 const assertReturnTransition = (from: ReturnStatus, to: ReturnStatus): void => {
   if (!validReturnTransitions[from].includes(to)) {
     throw new ConflictError(`Cannot move from ${from} to ${to}`);
+  }
+};
+
+const applyReturnTransition = async (
+  returnRequest: ReturnRequest,
+  to: ReturnStatus,
+): Promise<void> => {
+  assertReturnTransition(returnRequest.status, to);
+
+  const updated = await transitionReturnStatusInDb(
+    returnRequest.id,
+    returnRequest.status,
+    to,
+  );
+
+  if (!updated) {
+    throw new ConflictError(
+      "Return request was changed by another request. Reload and try again.",
+    );
   }
 };
 
@@ -137,14 +156,14 @@ export const reviewReturn = async (
   requireStaff(user, "Only staff or admin can review return requests");
 
   const returnRequest = await loadReturn(returnId);
-  assertReturnTransition(returnRequest.status, decision);
 
   if (decision === "rejected") {
+    assertReturnTransition(returnRequest.status, "rejected");
     await rejectReturnTransaction(returnId);
     return;
   }
 
-  await updateReturnRequestInDB(returnId, decision);
+  await applyReturnTransition(returnRequest, decision);
 };
 
 export const markReturnInTransit = async (
@@ -152,11 +171,7 @@ export const markReturnInTransit = async (
   user: JwtPayload,
 ): Promise<void> => {
   requireStaff(user, "Only staff or admin can mark returns as in transit");
-
-  const returnRequest = await loadReturn(returnId);
-  assertReturnTransition(returnRequest.status, "in_transit");
-
-  await updateReturnRequestInDB(returnId, "in_transit");
+  await applyReturnTransition(await loadReturn(returnId), "in_transit");
 };
 
 export const receiveReturn = async (
@@ -164,11 +179,7 @@ export const receiveReturn = async (
   user: JwtPayload,
 ): Promise<void> => {
   requireStaff(user, "Only staff or admin can receive returns");
-
-  const returnRequest = await loadReturn(returnId);
-  assertReturnTransition(returnRequest.status, "received");
-
-  await updateReturnRequestInDB(returnId, "received");
+  await applyReturnTransition(await loadReturn(returnId), "received");
 };
 
 export const markReturnRefunded = async (
@@ -176,9 +187,5 @@ export const markReturnRefunded = async (
   user: JwtPayload,
 ): Promise<void> => {
   requireStaff(user, "Only staff or admin can mark returns as refunded");
-
-  const returnRequest = await loadReturn(returnId);
-  assertReturnTransition(returnRequest.status, "refunded");
-
-  await updateReturnRequestInDB(returnId, "refunded");
+  await applyReturnTransition(await loadReturn(returnId), "refunded");
 };

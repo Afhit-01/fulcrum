@@ -162,23 +162,17 @@ export const getReturnByIdFromDB = async (
   }
 };
 
-export const updateReturnRequestInDB = async (
+export const transitionReturnStatusInDb = async (
   id: string,
-  status: ReturnStatus,
-): Promise<void> => {
-  const client = await pool.connect();
+  fromStatus: ReturnStatus,
+  toStatus: ReturnStatus,
+): Promise<boolean> => {
+  const result = await pool.query(
+    `UPDATE return_requests SET status = $1 WHERE id = $2 AND status = $3;`,
+    [toStatus, id, fromStatus],
+  );
 
-  try {
-    const query = `
-      UPDATE return_requests
-      SET status = $1
-      WHERE id = $2;
-    `;
-
-    await client.query(query, [status, id]);
-  } finally {
-    client.release();
-  }
+  return result.rowCount === 1;
 };
 
 export const getReturnByOrderAndProductFromDb = async (
