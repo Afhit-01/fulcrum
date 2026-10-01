@@ -111,26 +111,12 @@ export const getRefundByIdFromDB = async (
   }
 };
 
-export const updateRefundStatusInDb = async (
-  id: string,
-  status: RefundStatus,
-  completedAt: string | null = null,
-): Promise<void> => {
-  const client = await pool.connect();
-
-  try {
-    const query = `
-      UPDATE refunds
-      SET
-        status = $1,
-        completed_at = $2
-      WHERE id = $3;
-    `;
-
-    await client.query(query, [status, completedAt, id]);
-  } finally {
-    client.release();
-  }
+export const failPendingRefundInDB = async (id: string): Promise<boolean> => {
+  const result = await pool.query(
+    `UPDATE refunds SET status = 'failed' WHERE id = $1 AND status = 'pending';`,
+    [id],
+  );
+  return result.rowCount === 1;
 };
 
 export const completeRefundTransaction = async (

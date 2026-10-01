@@ -4,8 +4,8 @@ import {
   getRefundByIdFromDB,
   getRefundsFromDB,
   insertRefund,
-  updateRefundStatusInDb,
   completeRefundTransaction,
+  failPendingRefundInDB,
 } from "../store/refundStore.js";
 
 import type { Refund, JwtPayload } from "../types.js";
@@ -76,7 +76,11 @@ export const completeRefund = async (
   }
 
   if (outcome === "failed") {
-    await updateRefundStatusInDb(refundId, "failed");
+    const updated = await failPendingRefundInDB(refundId)
+
+    if (!updated) {
+      throw new ConflictError("Refund is no longer pending")
+    }
     return;
   }
 
