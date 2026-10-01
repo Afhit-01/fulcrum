@@ -2,9 +2,10 @@ import { getOrderById, updateOrderStatus } from "./orderService.js";
 
 import {
   getReturnByIdFromDB,
-  insertReturnRequest,
   updateReturnRequestInDB,
   getReturnsFromDb,
+  createReturnRequestTransaction,
+  rejectReturnTransaction,
 } from "../store/returnStore.js";
 
 import {
@@ -70,23 +71,6 @@ export const getReturnById = async (
   return await getReturnByIdFromDB(id, customerIdFilter);
 };
 
-// Ownership has already been verified by returnOrder() before this function is called
-export const requestReturnOrder = async (orderId: string): Promise<void> => {
-  const order = await getOrderByIdFromDb(orderId);
-
-  if (!order) {
-    throw new NotFoundError("Order not found");
-  }
-
-  if (order.status !== "delivered") {
-    throw new ConflictError(
-      `Cannot change order status from ${order.status} to return_requested`,
-    );
-  }
-
-  await updateOrderStatusInDb(orderId, "return_requested");
-};
-
 export const returnOrder = async (
   user: JwtPayload,
   orderId: string,
@@ -141,10 +125,9 @@ export const returnOrder = async (
     );
   }
 
-  await insertReturnRequest(orderId, productId, quantity, reason);
-
   // Ownership was already established by getOrderById(orderId, user).
-  await requestReturnOrder(orderId);
+
+  await createReturnRequestTransaction(orderId, productId, quantity, reason);
 
   return {
     message: "Your return request has been received and is under review",
@@ -161,11 +144,12 @@ export const reviewReturn = async (
   const returnRequest = await loadReturn(returnId);
   assertReturnTransition(returnRequest.status, decision);
 
-  await updateReturnRequestInDB(returnId, decision);
-
   if (decision === "rejected") {
-    await updateOrderStatus(returnRequest.orderId, "delivered", user);
+    await rejectReturnTransaction(returnId);
+    return;
   }
+
+  await updateReturnRequestInDB(returnId, decision);
 };
 
 export const markReturnInTransit = async (

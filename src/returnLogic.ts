@@ -1,7 +1,6 @@
 export {
   getReturns,
   getReturnById,
-  requestReturnOrder,
   returnOrder,
   reviewReturn,
   markReturnInTransit,
