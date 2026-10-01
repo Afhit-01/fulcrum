@@ -60,23 +60,17 @@ export const insertOrder = async (
   }
 };
 
-export const updateOrderStatusInDb = async (
+export const transitionOrderStatusInDb = async (
   id: string,
-  newStatus: OrderStatus,
-) => {
-  const client = await pool.connect();
+  fromStatus: OrderStatus,
+  toStatus: OrderStatus,
+): Promise<boolean> => {
+  const result = await pool.query(
+    `UPDATE orders SET status = $1 WHERE id = $2 AND status = $3;`,
+    [toStatus, id, fromStatus],
+  );
 
-  try {
-    const updateQuery = `
-      UPDATE orders
-      SET status = $1
-      WHERE id = $2;
-    `;
-
-    await client.query(updateQuery, [newStatus, id]);
-  } finally {
-    client.release();
-  }
+  return result.rowCount === 1;
 };
 
 export const getOrderByIdFromDb = async (

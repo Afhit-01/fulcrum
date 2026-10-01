@@ -12,7 +12,7 @@ import {
   getOrderReportFromId,
   getOrdersByStatusFromDb,
   insertOrder,
-  updateOrderStatusInDb,
+  transitionOrderStatusInDb,
 } from "../store/orderStore.js";
 
 export const validTransitions: Record<OrderStatus, OrderStatus[]> = {
@@ -97,7 +97,13 @@ export const updateOrderStatus = async (
     );
   }
 
-  await updateOrderStatusInDb(id, newStatus);
+  const updated = await transitionOrderStatusInDb(id, order.status, newStatus);
+
+  if (!updated) {
+    throw new ConflictError(
+      "Order was changed by another request. Reload and try again",
+    );
+  }
 };
 
 export const getOrderTotal = async (
@@ -135,7 +141,17 @@ export const cancelOrder = async (
     throw new ConflictError("Can't cancel at this stage");
   }
 
-  await updateOrderStatusInDb(id, "cancelled");
+  const updated = await transitionOrderStatusInDb(
+    id,
+    order.status,
+    "cancelled",
+  );
+
+  if (!updated) {
+    throw new ConflictError(
+      "Order was changed by another request. Reload and try again",
+    );
+  }
 };
 
 export const getOrderReport = async () => {
