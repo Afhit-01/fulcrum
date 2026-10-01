@@ -1,4 +1,4 @@
-import { getOrderById, updateOrderStatus } from "./orderService.js";
+import { getOrderById } from "./orderService.js";
 
 import {
   getReturnByIdFromDB,
@@ -7,11 +7,6 @@ import {
   createReturnRequestTransaction,
   rejectReturnTransaction,
 } from "../store/returnStore.js";
-
-import {
-  getOrderByIdFromDb,
-  updateOrderStatusInDb,
-} from "../store/orderStore.js";
 
 import {
   BadRequestError,
