@@ -1,43 +1,47 @@
-import pool from "../db/client.js";
+import pool, { withTransaction } from "../db/client.js";
+import { ConflictError, NotFoundError } from "../errors/AppError.js";
 import type { ReturnRequest, ReturnStatus } from "../types.js";
 
-export const insertReturnRequest = async (
+export const createReturnRequestTransaction = async (
   orderId: string,
   productId: string,
   quantity: number,
   reason: string,
-): Promise<ReturnRequest> => {
-  const client = await pool.connect();
+): Promise<ReturnRequest> =>
+  withTransaction(async (client) => {
+    const orderResult = await client.query(
+      `SELECT status FROM orders WHERE id = $1 FOR UPDATE;`,
+      [orderId],
+    );
 
-  try {
-    const query = `
-      INSERT INTO return_requests (
-        order_id,
-        product_id,
-        quantity,
-        reason,
-        status
-      )
+    if (orderResult.rowCount === 0) {
+      throw new NotFoundError("Order not found");
+    }
+
+    const orderStatus = orderResult.rows[0].status;
+    if (orderStatus !== "delivered") {
+      throw new ConflictError(
+        `Cannot change order status from ${orderStatus} to return_requested`,
+      );
+    }
+
+    const insertResult = await client.query(
+      `
+      INSERT INTO return_requests (order_id, product_id, quantity, reason, status)
       VALUES ($1, $2, $3, $4, $5)
-      RETURNING
-        id,
-        order_id,
-        product_id,
-        quantity,
-        reason,
-        status,
-        created_at;
-    `;
+      RETURNING id, order_id, product_id, quantity, reason, status, created_at;
+      `,
+      [orderId, productId, quantity, reason, "pending"],
+    );
 
-    const result = await client.query(query, [
-      orderId,
-      productId,
-      quantity,
-      reason,
-      "pending",
-    ]);
+    await client.query(
+      `
+      UPDATE orders SET status = $1 WHERE id = $2;
+      `,
+      ["return_requested", orderId],
+    );
 
-    const row = result.rows[0];
+    const row = insertResult.rows[0];
 
     return {
       id: row.id,
@@ -48,10 +52,7 @@ export const insertReturnRequest = async (
       status: row.status as ReturnStatus,
       requestedAt: row.created_at,
     };
-  } finally {
-    client.release();
-  }
-};
+  });
 
 export const getReturnByIdFromDB = async (
   id: string,
