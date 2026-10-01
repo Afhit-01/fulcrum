@@ -1,17 +1,41 @@
-Fulcrum
+# Fulcrum
 
 A backend REST API for managing the lifecycle of orders, returns, and refunds.
 
 Fulcrum is built with Node.js, TypeScript, Express, and PostgreSQL, with authentication, role-based authorization, customer data isolation, state-machine-driven workflows, database transactions, idempotency, rate limiting, migrations, and automated tests.
 
-Tech Stack
+## Table of Contents
+
+- [Tech Stack](#tech-stack)
+- [Architecture](#architecture)
+- [Features](#features)
+- [Getting Started](#getting-started)
+- [Useful Commands](#useful-commands)
+- [Authentication](#authentication)
+- [Roles](#roles)
+- [API Endpoints](#api-endpoints)
+- [Payment Integration](#payment-integration)
+- [Order State Machine](#order-state-machine)
+- [Return State Machine](#return-state-machine)
+- [Refund State Machine](#refund-state-machine)
+- [Database](#database)
+- [Transactions](#transactions)
+- [Idempotency](#idempotency)
+- [Rate Limiting](#rate-limiting)
+- [Validation and Error Handling](#validation-and-error-handling)
+- [Testing](#testing)
+- [Project Structure](#project-structure)
+- [Current Scope](#current-scope)
+- [Author](#author)
+
+## Tech Stack
 
 - Node.js
 - TypeScript
 - Express 5
 - PostgreSQL
-- "pg" for database access
-- JWT ("jsonwebtoken")
+- `pg` for database access
+- JWT (`jsonwebtoken`)
 - bcrypt
 - Helmet
 - express-rate-limit
@@ -19,10 +43,11 @@ Tech Stack
 - Supertest
 - Paystack integration for payment initialization
 
-Architecture
+## Architecture
 
 The application follows a layered structure:
 
+```text
 HTTP Request
      ↓
 Middleware
@@ -34,14 +59,15 @@ Service
 Store
      ↓
 PostgreSQL
+```
 
-- Routes handle HTTP concerns and request-level validation.
-- Middleware handles authentication, idempotency, rate limiting, and body validation.
-- Services contain business rules, authorization decisions, and workflow transitions.
-- Stores contain PostgreSQL queries and persistence logic.
-- Database provides durable state, constraints, foreign keys, and transactional guarantees.
+- **Routes** handle HTTP concerns and request-level validation.
+- **Middleware** handles authentication, idempotency, rate limiting, and body validation.
+- **Services** contain business rules, authorization decisions, and workflow transitions.
+- **Stores** contain PostgreSQL queries and persistence logic.
+- **Database** provides durable state, constraints, foreign keys, and transactional guarantees.
 
-Features
+## Features
 
 - PostgreSQL-backed persistent storage
 - Customer registration and login
@@ -62,150 +88,170 @@ Features
 - Admin seeding
 - Integration and service-level tests
 
-Getting Started
+## Getting Started
 
-Requirements
+### Requirements
 
 - Node.js
 - npm
 - PostgreSQL
 
-1. Install dependencies
+### 1. Install dependencies
 
+```bash
 npm ci
+```
 
-2. Configure the environment
+### 2. Configure the environment
 
-Create a ".env" file.
+Create a `.env` file. At minimum:
 
-At minimum:
-
+```env
 DATABASE_URL=postgres://<username>:<password>@<host>:<port>/<database_name>
 JWT_SECRET=<long-random-secret>
 PORT=3000
 PAYSTACK_SECRET_KEY=<paystack-secret-key>
+```
 
 Optional rate-limit configuration:
 
+```env
 AUTH_RATE_LIMIT_MAX=10
 API_RATE_LIMIT_MAX=80
+```
 
 Both rate limiters use a 15-minute window.
 
 For local admin seeding, also provide:
 
+```env
 SEED_ADMIN_EMAIL=admin@example.com
 SEED_ADMIN_PASSWORD=<password>
+```
 
-A template is available in ".env.example".
+A template is available in `.env.example`.
 
-3. Run migrations
+### 3. Run migrations
 
+```bash
 npm run migrate:up
+```
 
 This applies all migrations in order.
 
 To reverse all migrations:
 
+```bash
 npm run migrate:down
+```
 
-«"migrate:down" removes the application schema. Use it only when you intend to reset the database.»
+> [!WARNING]
+> `migrate:down` removes the application schema. Use it only when you intend to reset the database.
 
-4. Seed an admin account
+### 4. Seed an admin account
 
 After the authentication migration has been applied:
 
+```bash
 npm run seed
+```
 
 The seed script hashes the supplied password with bcrypt and does not overwrite an existing staff account with the same email.
 
-5. Start the development server
+### 5. Start the development server
 
+```bash
 npm run dev
+```
 
-The API runs on:
+The API runs on <http://localhost:3000>.
 
-http://localhost:3000
+## Useful Commands
 
-Useful Commands
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start the development server with watch mode |
+| `npm run build` | Compile TypeScript |
+| `npm run lint` | Run ESLint |
+| `npm run lint:fix` | Fix ESLint issues where possible |
+| `npm run format` | Format the project with Prettier |
+| `npm run format:check` | Check formatting |
+| `npm test` | Run the Vitest test suite |
+| `npm run test:watch` | Run Vitest in watch mode |
+| `npm run migrate:up` | Apply all application migrations |
+| `npm run migrate:down` | Reverse all application migrations |
+| `npm run migrate:test:up` | Apply migrations using `.env.test` |
+| `npm run migrate:test:down` | Reverse test migrations |
+| `npm run seed` | Seed an admin staff account |
 
-Command| Purpose
-"npm run dev"| Start the development server with watch mode
-"npm run build"| Compile TypeScript
-"npm run lint"| Run ESLint
-"npm run lint:fix"| Fix ESLint issues where possible
-"npm run format"| Format the project with Prettier
-"npm run format:check"| Check formatting
-"npm test"| Run the Vitest test suite
-"npm run test:watch"| Run Vitest in watch mode
-"npm run migrate:up"| Apply all application migrations
-"npm run migrate:down"| Reverse all application migrations
-"npm run migrate:test:up"| Apply migrations using ".env.test"
-"npm run migrate:test:down"| Reverse test migrations
-"npm run seed"| Seed an admin staff account
-
-Authentication
+## Authentication
 
 The API uses JWT bearer authentication.
 
 After login, the server returns a token containing:
 
+```ts
 {
   id: string;
   role: "customer" | "staff" | "admin";
 }
+```
 
 Authenticated requests use:
 
+```http
 Authorization: Bearer <token>
+```
 
 Tokens expire after one hour.
 
-Roles
+## Roles
 
-There are three roles:
-
-- "customer"
-- "staff"
-- "admin"
+There are three roles: `customer`, `staff`, and `admin`.
 
 The main permissions are:
 
-Operation| Customer| Staff| Admin
-Register| ✓| —| —
-Login| ✓| ✓| ✓
-Create order| ✓| —| —
-View own orders| ✓| —| —
-View orders across customers| —| ✓| ✓
-Update order status| —| ✓| ✓
-Request return| ✓| —| —
-Review returns| —| ✓| ✓
-Move returns through operational stages| —| ✓| ✓
-Process refunds| —| ✓| ✓
+| Operation | Customer | Staff | Admin |
+| --- | :---: | :---: | :---: |
+| Register | ✓ | — | — |
+| Login | ✓ | ✓ | ✓ |
+| Create order | ✓ | — | — |
+| View own orders | ✓ | — | — |
+| View orders across customers | — | ✓ | ✓ |
+| Update order status | — | ✓ | ✓ |
+| Request return | ✓ | — | — |
+| Review returns | — | ✓ | ✓ |
+| Move returns through operational stages | — | ✓ | ✓ |
+| Process refunds | — | ✓ | ✓ |
 
 Customer queries are filtered by the authenticated user's ID, preventing one customer from retrieving another customer's records by changing an ID in the URL.
 
-API Endpoints
+## API Endpoints
 
 All order, return, and refund endpoints require authentication.
 
-Authentication
+### Authentication
 
+```http
 POST /auth/customer/register
 POST /auth/customer/login
 POST /auth/staff/login
+```
 
 Customer registration and login accept:
 
+```json
 {
   "email": "customer@example.com",
   "password": "password"
 }
+```
 
 There is no public staff registration endpoint. Staff/admin accounts are created through the seed mechanism.
 
-Orders
+### Orders
 
+```http
 POST   /orders
 GET    /orders?status=pending
 GET    /orders/:orderId
@@ -213,9 +259,11 @@ GET    /orders/:orderId/total
 PATCH  /orders/:orderId/status
 DELETE /orders/:orderId
 GET    /orders/report
+```
 
 Create an order with:
 
+```json
 {
   "items": [
     {
@@ -226,13 +274,15 @@ Create an order with:
     }
   ]
 }
+```
 
-"POST /orders" requires an "Idempotency-Key" header.
+`POST /orders` requires an `Idempotency-Key` header.
 
-Returns
+### Returns
 
-The mounted route prefix is singular: "/return".
+The mounted route prefix is singular: `/return`.
 
+```http
 GET   /return
 GET   /return/:returnId
 
@@ -242,55 +292,59 @@ PATCH /return/:orderId/:productId/ship
 PATCH /return/:orderId/:productId/receive
 
 POST  /return/:orderId/:productId/refund
+```
 
 A return request requires a reason:
 
+```json
 {
   "reason": "Product arrived damaged"
 }
+```
 
 The request is checked against the customer's order, delivered status, product, quantity, and 30-day return window.
 
-Refunds
+### Refunds
 
+```http
 GET   /refunds
 GET   /refunds/:refundId
 PATCH /refunds/:refundId/complete
+```
 
 Refund completion accepts:
 
+```json
 {
   "outcome": "completed"
 }
+```
 
 or:
 
+```json
 {
   "outcome": "failed"
 }
+```
 
-Refund creation and completion require an "Idempotency-Key" header.
+Refund creation and completion require an `Idempotency-Key` header.
 
-Payment integration
+## Payment Integration
 
-A Paystack integration exists in "src/integrations/paystack.ts" and supports transaction initialization internally.
+A Paystack integration exists in `src/integrations/paystack.ts` and supports transaction initialization internally.
 
-The payment router is currently not mounted in "src/app.ts", so there is no active "/payment" HTTP endpoint in the current application.
+The payment router is currently not mounted in `src/app.ts`, so there is no active `/payment` HTTP endpoint in the current application.
 
-Order State Machine
+## Order State Machine
 
 Orders use these statuses:
 
-pending
-confirmed
-shipped
-delivered
-cancelled
-return_requested
-returned
+`pending`, `confirmed`, `shipped`, `delivered`, `cancelled`, `return_requested`, `returned`
 
 Allowed transitions:
 
+```text
 pending
  ├── confirmed
  │    ├── shipped
@@ -300,31 +354,30 @@ pending
  │    │              └── returned   (refund completed)
  │    └── cancelled
  └── cancelled
+```
 
 Transitions are validated in the service layer.
 
 Database updates also use compare-and-set semantics:
 
+```sql
 UPDATE orders
 SET status = $1
 WHERE id = $2
   AND status = $3;
+```
 
 This prevents a request from overwriting a state that another concurrent request has already changed.
 
-Return State Machine
+## Return State Machine
 
-Returns use:
+Returns use these statuses:
 
-pending
-approved
-rejected
-in_transit
-received
-refunded
+`pending`, `approved`, `rejected`, `in_transit`, `received`, `refunded`
 
 The normal path is:
 
+```text
 pending
    ↓
 approved
@@ -334,25 +387,27 @@ in_transit
 received
    ↓
 refunded
+```
 
 A pending return may instead be rejected:
 
+```text
 pending → rejected
+```
 
 Return creation and rejection use database transactions because they update both the return request and its associated order.
 
-Refund State Machine
+## Refund State Machine
 
-Refunds use:
+Refunds use these statuses:
 
-pending
-completed
-failed
+`pending`, `completed`, `failed`
 
-A refund can only be created when its return is "received".
+A refund can only be created when its return is `received`.
 
 Successful completion is transactional:
 
+```text
 Refund:  pending
 Return:  received
 Order:   return_requested
@@ -362,33 +417,37 @@ Order:   return_requested
 Refund:  completed
 Return:  refunded
 Order:   returned
+```
 
 The completion transaction locks the refund, return, and order rows and re-checks their states before making the three updates.
 
 If a refund fails:
 
+```text
 Refund:  failed
 Return:  received
 Order:   return_requested
+```
 
 The failed refund does not move the return or order forward. A new refund can then be created for another attempt.
 
-Database
+## Database
 
 PostgreSQL is the persistent data store.
 
 The main tables are:
 
-customers
-staff
-orders
-order_items
-return_requests
-refunds
-idempotency_keys
+- `customers`
+- `staff`
+- `orders`
+- `order_items`
+- `return_requests`
+- `refunds`
+- `idempotency_keys`
 
 Relationships:
 
+```text
 Customer
    │
    └── Orders
@@ -398,33 +457,30 @@ Customer
           └── Return Requests
                     │
                     └── Refunds
+```
 
-Orders use UUID primary keys generated by PostgreSQL.
+- Orders use UUID primary keys generated by PostgreSQL.
+- `order_items` uses `(order_id, product_id)` as its composite primary key.
+- `return_requests` references an order item through `(order_id, product_id)`.
+- Orders use `ON DELETE CASCADE` for their order items.
+- Database access uses parameterized SQL through `pg` rather than a heavy ORM.
 
-"order_items" uses "(order_id, product_id)" as its composite primary key.
-
-"return_requests" references an order item through:
-
-(order_id, product_id)
-
-Orders use "ON DELETE CASCADE" for their order items.
-
-Database access uses parameterized SQL through "pg" rather than a heavy ORM.
-
-Transactions
+## Transactions
 
 The project uses explicit PostgreSQL transactions for operations that must change multiple pieces of state atomically.
 
 A reusable transaction helper is provided:
 
+```ts
 withTransaction(async (client) => {
   // database operations
 });
+```
 
 The helper:
 
 1. Acquires a PostgreSQL client.
-2. Starts "BEGIN".
+2. Starts `BEGIN`.
 3. Runs the supplied function.
 4. Commits on success.
 5. Rolls back on failure.
@@ -432,50 +488,48 @@ The helper:
 
 Transactional workflows currently include return creation, return rejection, and successful refund completion.
 
-Idempotency
+## Idempotency
 
-Selected mutating operations require an "Idempotency-Key" header:
+Selected mutating operations require an `Idempotency-Key` header:
 
+```http
 POST  /orders
 POST  /return/:orderId/:productId/refund
 PATCH /refunds/:refundId/complete
+```
 
 Idempotency prevents a retried request from accidentally performing the same operation twice.
 
-Keys are scoped per authenticated user:
+Keys are scoped per authenticated user: `(user_id, idempotency_key)`.
 
-(user_id, idempotency_key)
+- If a completed request is repeated with the same key, the stored response is returned.
+- If the key is currently being processed, the second request receives `409 Conflict`.
+- Successful responses are cached.
+- Failed responses release the key so the client can retry after correcting the request or after a transient server failure.
 
-If a completed request is repeated with the same key, the stored response is returned.
-
-If the key is currently being processed, the second request receives:
-
-409 Conflict
-
-Successful responses are cached. Failed responses release the key so the client can retry after correcting the request or after a transient server failure.
-
-Rate Limiting
+## Rate Limiting
 
 Two rate limiters are configured:
 
-Authentication routes
-→ AUTH_RATE_LIMIT_MAX requests / 15 minutes
-
-Order, return, and refund routes
-→ API_RATE_LIMIT_MAX requests / 15 minutes
+| Scope | Limit |
+| --- | --- |
+| Authentication routes | `AUTH_RATE_LIMIT_MAX` requests / 15 minutes |
+| Order, return, and refund routes | `API_RATE_LIMIT_MAX` requests / 15 minutes |
 
 Defaults:
 
+```env
 AUTH_RATE_LIMIT_MAX=10
 API_RATE_LIMIT_MAX=80
+```
 
 The current implementation uses in-memory rate limiting. Redis-backed rate limiting is a future improvement.
 
-Validation and Error Handling
+## Validation and Error Handling
 
 Input validation and business validation are separated.
 
-Routes validate request-level concerns such as:
+**Routes** validate request-level concerns such as:
 
 - Required parameters
 - Request body shape
@@ -484,7 +538,7 @@ Routes validate request-level concerns such as:
 - Numeric values
 - Required fields
 
-Services enforce business rules such as:
+**Services** enforce business rules such as:
 
 - Who can perform an operation
 - Valid state transitions
@@ -493,23 +547,27 @@ Services enforce business rules such as:
 - Return quantities
 - Refund eligibility
 
-Application errors are represented by "AppError" subclasses and handled by centralized error middleware.
+Application errors are represented by `AppError` subclasses and handled by centralized error middleware.
 
 Typical responses include:
 
+```json
 {
   "error": "Order not found",
   "code": "NOT_FOUND"
 }
+```
 
 Unexpected errors return:
 
+```json
 {
   "error": "Internal server error",
   "code": "INTERNAL_ERROR"
 }
+```
 
-Testing
+## Testing
 
 The project uses Vitest and Supertest.
 
@@ -527,16 +585,20 @@ The test suite currently covers:
 - Failed refund retry behavior
 - Database behavior
 
-Tests use ".env.test" and a separate test database.
+Tests use `.env.test` and a separate test database.
 
-Because tests truncate shared database tables, ".env.test" must never point to a database containing data you want to keep.
+> [!CAUTION]
+> Because tests truncate shared database tables, `.env.test` must never point to a database containing data you want to keep.
 
 Run the suite with:
 
+```bash
 npm test
+```
 
-Project Structure
+## Project Structure
 
+```text
 src/
 ├── config/
 │   └── env.ts
@@ -603,8 +665,9 @@ tests/
 ├── helpers/
 ├── integration/
 └── services/
+```
 
-Current Scope
+## Current Scope
 
 Fulcrum is currently a backend-only project focused on order processing and the workflows that follow an order.
 
@@ -612,10 +675,9 @@ The current implementation includes persistent PostgreSQL storage, authenticatio
 
 There is currently no frontend or generated API specification.
 
-Author
+## Author
 
-Fatihu Ayomide Abdulganiyu (Afhit)
-
+**Fatihu Ayomide Abdulganiyu (Afhit)**
 Computer Science student, University of Ilorin.
 
-GitHub: "Afhit-01"
+GitHub: [Afhit-01](https://github.com/Afhit-01)
