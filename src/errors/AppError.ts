@@ -39,3 +39,8 @@ export class UpstreamError extends AppError {
     super(502, msg, "UPSTREAM_ERROR");
   }
 }
+export class TooManyRequestsError extends AppError {
+  constructor(msg = "Too many requests") {
+    super(429, msg, "RATE_LIMITED");
+  }
+}
