@@ -6,6 +6,7 @@ import ordersRouter from "./routes/ordersRouter.js";
 import returnsRouter from "./routes/returnsRouter.js";
 import refundsRouter from "./routes/refundsRouter.js";
 import authRouter from "./routes/authRouter.js";
+import productsRouter from "./routes/productsRouter.js"
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
 
 dotenv.config();
@@ -23,6 +24,7 @@ app.use("/auth", authLimiter, authRouter);
 app.use("/orders", apiLimiter, ordersRouter);
 app.use("/return", apiLimiter, returnsRouter);
 app.use("/refunds", apiLimiter, refundsRouter);
+app.use("/products", apiLimiter, productsRouter);
 app.use(notFound);
 app.use(errorHandler);
 
