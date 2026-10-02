@@ -84,3 +84,14 @@ export interface PaymentBody {
   email: string;
   reference?: string;
 }
+
+export interface OrderItemInput {
+  productId: string;
+  quantity: number;
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  unitPrice: number;
+}
