@@ -1,7 +1,7 @@
 {
-  "name": "order_processing_engine",
+  "name": "fulcrum",
   "version": "1.0.0",
-  "description": "Order processing API with order, return, and refund workflows",
+  "description": "An order processing and lifecycle management API",
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc",
