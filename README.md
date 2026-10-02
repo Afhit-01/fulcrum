@@ -168,21 +168,21 @@ The API runs on <http://localhost:3000>.
 
 ## Useful Commands
 
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Start the development server with watch mode |
-| `npm run build` | Compile TypeScript |
-| `npm run lint` | Run ESLint |
-| `npm run lint:fix` | Fix ESLint issues where possible |
-| `npm run format` | Format the project with Prettier |
-| `npm run format:check` | Check formatting |
-| `npm test` | Run the Vitest test suite |
-| `npm run test:watch` | Run Vitest in watch mode |
-| `npm run migrate:up` | Apply all application migrations |
-| `npm run migrate:down` | Reverse all application migrations |
-| `npm run migrate:test:up` | Apply migrations using `.env.test` |
-| `npm run migrate:test:down` | Reverse test migrations |
-| `npm run seed` | Seed an admin staff account |
+| Command                     | Purpose                                      |
+| --------------------------- | -------------------------------------------- |
+| `npm run dev`               | Start the development server with watch mode |
+| `npm run build`             | Compile TypeScript                           |
+| `npm run lint`              | Run ESLint                                   |
+| `npm run lint:fix`          | Fix ESLint issues where possible             |
+| `npm run format`            | Format the project with Prettier             |
+| `npm run format:check`      | Check formatting                             |
+| `npm test`                  | Run the Vitest test suite                    |
+| `npm run test:watch`        | Run Vitest in watch mode                     |
+| `npm run migrate:up`        | Apply all application migrations             |
+| `npm run migrate:down`      | Reverse all application migrations           |
+| `npm run migrate:test:up`   | Apply migrations using `.env.test`           |
+| `npm run migrate:test:down` | Reverse test migrations                      |
+| `npm run seed`              | Seed an admin staff account                  |
 
 ## Authentication
 
@@ -211,18 +211,18 @@ There are three roles: `customer`, `staff`, and `admin`.
 
 The main permissions are:
 
-| Operation | Customer | Staff | Admin |
-| --- | :---: | :---: | :---: |
-| Register | ✓ | — | — |
-| Login | ✓ | ✓ | ✓ |
-| Create order | ✓ | — | — |
-| View own orders | ✓ | — | — |
-| View orders across customers | — | ✓ | ✓ |
-| Update order status | — | ✓ | ✓ |
-| Request return | ✓ | — | — |
-| Review returns | — | ✓ | ✓ |
-| Move returns through operational stages | — | ✓ | ✓ |
-| Process refunds | — | ✓ | ✓ |
+| Operation                               | Customer | Staff | Admin |
+| --------------------------------------- | :------: | :---: | :---: |
+| Register                                |    ✓     |   —   |   —   |
+| Login                                   |    ✓     |   ✓   |   ✓   |
+| Create order                            |    ✓     |   —   |   —   |
+| View own orders                         |    ✓     |   —   |   —   |
+| View orders across customers            |    —     |   ✓   |   ✓   |
+| Update order status                     |    —     |   ✓   |   ✓   |
+| Request return                          |    ✓     |   —   |   —   |
+| Review returns                          |    —     |   ✓   |   ✓   |
+| Move returns through operational stages |    —     |   ✓   |   ✓   |
+| Process refunds                         |    —     |   ✓   |   ✓   |
 
 Customer queries are filtered by the authenticated user's ID, preventing one customer from retrieving another customer's records by changing an ID in the URL.
 
@@ -511,10 +511,10 @@ Keys are scoped per authenticated user: `(user_id, idempotency_key)`.
 
 Two rate limiters are configured:
 
-| Scope | Limit |
-| --- | --- |
-| Authentication routes | `AUTH_RATE_LIMIT_MAX` requests / 15 minutes |
-| Order, return, and refund routes | `API_RATE_LIMIT_MAX` requests / 15 minutes |
+| Scope                            | Limit                                       |
+| -------------------------------- | ------------------------------------------- |
+| Authentication routes            | `AUTH_RATE_LIMIT_MAX` requests / 15 minutes |
+| Order, return, and refund routes | `API_RATE_LIMIT_MAX` requests / 15 minutes  |
 
 Defaults:
 

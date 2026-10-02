@@ -1,0 +1,7 @@
+CREATE TABLE products (
+    id VARCHAR(255) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    unit_price NUMERIC(10,2) NOT NULL CHECK (unit_price > 0),
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+)
