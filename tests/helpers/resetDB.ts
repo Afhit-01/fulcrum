@@ -8,8 +8,15 @@ export const resetDb = async (): Promise<void> => {
       return_requests,
       order_items,
       orders,
+      products,
       customers,
       staff
     CASCADE;
   `);
+
+  await pool.query(
+    `INSERT INTO products (id, name, unit_price) VALUES
+    ('sku-1', 'Keyboard', 15000),
+    ('sku-2', 'Mouse', 8000);`,
+  );
 };
