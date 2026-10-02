@@ -1,28 +1,27 @@
-import type { OrderItem, OrderStatus } from "../types.js";
+import type { OrderItemInput, OrderStatus } from "../types.js";
 import validator from "validator";
 
-const isOrderItem = (value: unknown): value is OrderItem => {
+const isOrderItemInput = (value: unknown): value is OrderItemInput => {
   if (typeof value !== "object" || value === null) return false;
 
   const item = value as Record<string, unknown>;
   return (
     typeof item.productId === "string" &&
-    typeof item.name === "string" &&
-    typeof item.unitPrice === "number" &&
+    item.productId.length > 0 &&
     typeof item.quantity === "number"
   );
 };
 
 export const isCreateOrderPayload = (
   body: unknown,
-): body is { items: OrderItem[] } => {
+): body is { items: OrderItemInput[] } => {
   if (typeof body !== "object" || body === null) return false;
 
   const payload = body as Record<string, unknown>;
 
   return (
     Array.isArray(payload.items) &&
-    payload.items.every((item) => isOrderItem(item))
+    payload.items.every((item) => isOrderItemInput(item))
   );
 };
 

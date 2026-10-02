@@ -1,4 +1,10 @@
-import type { Order, OrderItem, OrderStatus, JwtPayload } from "../types.js";
+import type {
+  Order,
+  OrderItem,
+  OrderStatus,
+  JwtPayload,
+  OrderItemInput,
+} from "../types.js";
 
 import {
   BadRequestError,
@@ -14,6 +20,7 @@ import {
   insertOrder,
   transitionOrderStatusInDb,
 } from "../store/orderStore.js";
+import { getActiveProductsByIds } from "../store/productStore.js";
 
 export const validTransitions: Record<OrderStatus, OrderStatus[]> = {
   pending: ["confirmed", "cancelled"],
@@ -31,26 +38,61 @@ export const validTransitions: Record<OrderStatus, OrderStatus[]> = {
   returned: [],
 };
 
+const MAX_QUANTITY_PER_ITEM = 500;
+
 export const createOrder = async (
   user: JwtPayload,
-  items: OrderItem[],
+  inputs: OrderItemInput[],
 ): Promise<Order> => {
-  if (items.length === 0) {
+  if (inputs.length === 0) {
     throw new BadRequestError("Order cart cannot be empty");
   }
 
-  const hasNegatives = items.some(
-    (item) => item.quantity <= 0 || item.unitPrice <= 0,
+  const invalidQuantity = inputs.some(
+    (item) =>
+      !Number.isInteger(item.quantity) ||
+      item.quantity <= 0 ||
+      item.quantity > MAX_QUANTITY_PER_ITEM,
   );
 
-  if (hasNegatives) {
-    throw new BadRequestError("Quantity or UnitPrice must be greater than 0");
+  if (invalidQuantity) {
+    throw new BadRequestError(
+      `Quantity must be a whole number between 1 and ${MAX_QUANTITY_PER_ITEM}`,
+    );
+  }
+
+  const ids = inputs.map((item) => item.productId);
+
+  if (new Set(ids).size !== ids.length) {
+    throw new BadRequestError("Each product can only appear once in an order");
   }
 
   // Only customers can create orders.
   if (user.role !== "customer") {
     throw new ForbiddenError("Only customers can place orders");
   }
+
+  const products = await getActiveProductsByIds(ids);
+  const productsById = new Map(products.map((p) => [p.id, p]));
+
+  const unknown = ids.filter((id) => !productsById.has(id));
+
+  if (unknown.length > 0) {
+    throw new BadRequestError(
+      `Unknown or unavailable product(s): ${unknown.join(", ")}`,
+    );
+  }
+
+  const items: OrderItem[] = inputs.map(({ productId, quantity }) => {
+    const product = productsById.get(productId)!;
+
+    return {
+      productId,
+      name: product.name,
+      unitPrice: product.unitPrice,
+      quantity,
+    };
+  });
 
   return await insertOrder(user.id, "Customer", items);
 };
