@@ -79,12 +79,6 @@ export interface IdempotencyRecord {
   created_at: Date;
 }
 
-export interface PaymentBody {
-  amount: number; // kobo
-  email: string;
-  reference?: string;
-}
-
 export interface OrderItemInput {
   productId: string;
   quantity: number;

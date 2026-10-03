@@ -2,7 +2,7 @@
 
 A backend REST API for managing the lifecycle of orders, returns, and refunds.
 
-Fulcrum is built with Node.js, TypeScript, Express, and PostgreSQL, with authentication, role-based authorization, customer data isolation, state-machine-driven workflows, database transactions, idempotency, rate limiting, migrations, and automated tests.
+Fulcrum is built with Node.js, TypeScript, Express, and PostgreSQL, with authentication, role-based authorization, customer data isolation, server-side pricing, state-machine-driven workflows, database transactions, idempotency, rate limiting, migrations, interactive API documentation, and automated tests.
 
 ## Table of Contents
 
@@ -11,10 +11,11 @@ Fulcrum is built with Node.js, TypeScript, Express, and PostgreSQL, with authent
 - [Features](#features)
 - [Getting Started](#getting-started)
 - [Useful Commands](#useful-commands)
+- [API Documentation](#api-documentation)
 - [Authentication](#authentication)
 - [Roles](#roles)
 - [API Endpoints](#api-endpoints)
-- [Payment Integration](#payment-integration)
+- [Products and Server-Side Pricing](#products-and-server-side-pricing)
 - [Order State Machine](#order-state-machine)
 - [Return State Machine](#return-state-machine)
 - [Refund State Machine](#refund-state-machine)
@@ -25,7 +26,7 @@ Fulcrum is built with Node.js, TypeScript, Express, and PostgreSQL, with authent
 - [Validation and Error Handling](#validation-and-error-handling)
 - [Testing](#testing)
 - [Project Structure](#project-structure)
-- [Current Scope](#current-scope)
+- [Current Scope and Known Limitations](#current-scope-and-known-limitations)
 - [Author](#author)
 
 ## Tech Stack
@@ -39,9 +40,9 @@ Fulcrum is built with Node.js, TypeScript, Express, and PostgreSQL, with authent
 - bcrypt
 - Helmet
 - express-rate-limit
+- OpenAPI 3 with Swagger UI (`swagger-ui-express`)
 - Vitest
 - Supertest
-- Paystack integration for payment initialization
 
 ## Architecture
 
@@ -75,6 +76,7 @@ PostgreSQL
 - JWT authentication
 - Role-based access control
 - Customer-level data isolation
+- Product catalog with server-side pricing
 - Order lifecycle management
 - Partial item returns
 - Return approval/rejection workflow
@@ -84,8 +86,9 @@ PostgreSQL
 - Idempotency for selected mutating operations
 - Configurable rate limiting
 - Centralized application error handling
+- Interactive API documentation (Swagger UI)
 - Database migrations
-- Admin seeding
+- Admin and sample catalog seeding
 - Integration and service-level tests
 
 ## Getting Started
@@ -110,7 +113,6 @@ Create a `.env` file. At minimum:
 DATABASE_URL=postgres://<username>:<password>@<host>:<port>/<database_name>
 JWT_SECRET=<long-random-secret>
 PORT=3000
-PAYSTACK_SECRET_KEY=<paystack-secret-key>
 ```
 
 Optional rate-limit configuration:
@@ -120,9 +122,9 @@ AUTH_RATE_LIMIT_MAX=10
 API_RATE_LIMIT_MAX=80
 ```
 
-Both rate limiters use a 15-minute window.
+Both rate limiters use a 15-minute window. Consider raising `API_RATE_LIMIT_MAX` when demoing through Swagger UI, since every "Try it out" request counts toward the limit.
 
-For local admin seeding, also provide:
+For local seeding, also provide:
 
 ```env
 SEED_ADMIN_EMAIL=admin@example.com
@@ -131,6 +133,8 @@ SEED_ADMIN_PASSWORD=<password>
 
 A template is available in `.env.example`.
 
+Tests use a separate `.env.test` pointing at a separate database (see [Testing](#testing)).
+
 ### 3. Run migrations
 
 ```bash
@@ -138,6 +142,9 @@ npm run migrate:up
 ```
 
 This applies all migrations in order.
+
+> [!IMPORTANT]
+> The migration runner does not record which migrations have already run. `migrate:up` replays every migration from the first, so it only works on an **empty** database. Use it once per fresh database. To add a new migration to an existing database, apply just that file with `psql -f src/db/migrations/<file>_up.sql`, and register it in both lists in `src/db/migrate.ts` so fresh databases pick it up.
 
 To reverse all migrations:
 
@@ -148,15 +155,18 @@ npm run migrate:down
 > [!WARNING]
 > `migrate:down` removes the application schema. Use it only when you intend to reset the database.
 
-### 4. Seed an admin account
+### 4. Seed an admin account and the product catalog
 
-After the authentication migration has been applied:
+After the migrations have been applied:
 
 ```bash
 npm run seed
 ```
 
-The seed script hashes the supplied password with bcrypt and does not overwrite an existing staff account with the same email.
+The seed script:
+
+- Hashes the supplied admin password with bcrypt and does not overwrite an existing staff account with the same email.
+- Inserts a sample product catalog. Re-running the seed updates the name and price of existing sample products.
 
 ### 5. Start the development server
 
@@ -164,25 +174,37 @@ The seed script hashes the supplied password with bcrypt and does not overwrite 
 npm run dev
 ```
 
-The API runs on <http://localhost:3000>.
+The API runs on <http://localhost:3000>, and the interactive documentation is at <http://localhost:3000/docs>.
 
 ## Useful Commands
 
-| Command                     | Purpose                                      |
-| --------------------------- | -------------------------------------------- |
-| `npm run dev`               | Start the development server with watch mode |
-| `npm run build`             | Compile TypeScript                           |
-| `npm run lint`              | Run ESLint                                   |
-| `npm run lint:fix`          | Fix ESLint issues where possible             |
-| `npm run format`            | Format the project with Prettier             |
-| `npm run format:check`      | Check formatting                             |
-| `npm test`                  | Run the Vitest test suite                    |
-| `npm run test:watch`        | Run Vitest in watch mode                     |
-| `npm run migrate:up`        | Apply all application migrations             |
-| `npm run migrate:down`      | Reverse all application migrations           |
-| `npm run migrate:test:up`   | Apply migrations using `.env.test`           |
-| `npm run migrate:test:down` | Reverse test migrations                      |
-| `npm run seed`              | Seed an admin staff account                  |
+| Command                     | Purpose                                         |
+| --------------------------- | ----------------------------------------------- |
+| `npm run dev`               | Start the development server with watch mode    |
+| `npm run build`             | Compile TypeScript                              |
+| `npm run lint`              | Run ESLint                                      |
+| `npm run lint:fix`          | Fix ESLint issues where possible                |
+| `npm run format`            | Format the project with Prettier                |
+| `npm run format:check`      | Check formatting                                |
+| `npm test`                  | Run the Vitest test suite                       |
+| `npm run test:watch`        | Run Vitest in watch mode                        |
+| `npm run migrate:up`        | Apply all application migrations                |
+| `npm run migrate:down`      | Reverse all application migrations              |
+| `npm run migrate:test:up`   | Apply migrations using `.env.test`              |
+| `npm run migrate:test:down` | Reverse test migrations                         |
+| `npm run seed`              | Seed an admin account and the sample catalog    |
+
+## API Documentation
+
+Interactive documentation is served by the app at `/docs` (Swagger UI), generated from the OpenAPI 3 specification in [`openapi.yaml`](./openapi.yaml).
+
+To try the API from the documentation page:
+
+1. Register with `POST /auth/customer/register`, then log in with `POST /auth/customer/login` (or use `POST /auth/staff/login` with the seeded admin).
+2. Click **Authorize** and paste the returned token.
+3. For endpoints that require an `Idempotency-Key`, provide any unique string.
+
+The specification documents every endpoint, request body, response, role requirement, and the shared error format.
 
 ## Authentication
 
@@ -213,6 +235,7 @@ The main permissions are:
 
 | Operation                               | Customer | Staff | Admin |
 | --------------------------------------- | :------: | :---: | :---: |
+| Browse products (public)                |    ✓     |   ✓   |   ✓   |
 | Register                                |    ✓     |   —   |   —   |
 | Login                                   |    ✓     |   ✓   |   ✓   |
 | Create order                            |    ✓     |   —   |   —   |
@@ -228,7 +251,7 @@ Customer queries are filtered by the authenticated user's ID, preventing one cus
 
 ## API Endpoints
 
-All order, return, and refund endpoints require authentication.
+All order, return, and refund endpoints require authentication. `GET /products` and the authentication endpoints are public. For full request and response details, see [API Documentation](#api-documentation).
 
 ### Authentication
 
@@ -249,6 +272,14 @@ Customer registration and login accept:
 
 There is no public staff registration endpoint. Staff/admin accounts are created through the seed mechanism.
 
+### Products
+
+```http
+GET /products
+```
+
+Returns the active product catalog as `[{ id, name, unitPrice }]`, sorted by name.
+
 ### Orders
 
 ```http
@@ -261,20 +292,20 @@ DELETE /orders/:orderId
 GET    /orders/report
 ```
 
-Create an order with:
+Create an order with product ids and quantities only:
 
 ```json
 {
   "items": [
     {
       "productId": "sku-1",
-      "name": "Keyboard",
-      "unitPrice": 15000,
       "quantity": 1
     }
   ]
 }
 ```
+
+Quantity must be a whole number from 1 to 500, and each product may appear once per order. Names and prices are looked up on the server (see [Products and Server-Side Pricing](#products-and-server-side-pricing)).
 
 `POST /orders` requires an `Idempotency-Key` header.
 
@@ -330,11 +361,14 @@ or:
 
 Refund creation and completion require an `Idempotency-Key` header.
 
-## Payment Integration
+## Products and Server-Side Pricing
 
-A Paystack integration exists in `src/integrations/paystack.ts` and supports transaction initialization internally.
+Prices are never accepted from the client. When an order is placed, the server looks up each requested product in the `products` table and copies its current name and unit price into the order's items.
 
-The payment router is currently not mounted in `src/app.ts`, so there is no active `/payment` HTTP endpoint in the current application.
+- A client that sends its own `name` or `unitPrice` has those fields ignored.
+- Unknown or inactive products are rejected with `400`.
+- Order items are a **snapshot**: changing a product's price later does not change existing orders, so `order_items` deliberately has no foreign key to `products`.
+- Quantities must be whole numbers from 1 to 500.
 
 ## Order State Machine
 
@@ -367,7 +401,7 @@ WHERE id = $2
   AND status = $3;
 ```
 
-This prevents a request from overwriting a state that another concurrent request has already changed.
+This prevents a request from overwriting a state that another concurrent request has already changed. If the update affects no rows, the request fails with `409 Conflict`. The same technique protects return and refund status changes.
 
 ## Return State Machine
 
@@ -395,7 +429,7 @@ A pending return may instead be rejected:
 pending → rejected
 ```
 
-Return creation and rejection use database transactions because they update both the return request and its associated order.
+Return creation and rejection use database transactions because they update both the return request and its associated order. Creating a return locks the order row and re-checks that it is still `delivered`, so two simultaneous requests cannot both succeed.
 
 ## Refund State Machine
 
@@ -439,6 +473,7 @@ The main tables are:
 
 - `customers`
 - `staff`
+- `products`
 - `orders`
 - `order_items`
 - `return_requests`
@@ -452,11 +487,13 @@ Customer
    │
    └── Orders
           │
-          ├── Order Items
+          ├── Order Items   (snapshot of product name and price)
           │
           └── Return Requests
                     │
                     └── Refunds
+
+Products  (catalog; read when an order is placed)
 ```
 
 - Orders use UUID primary keys generated by PostgreSQL.
@@ -490,7 +527,7 @@ Transactional workflows currently include return creation, return rejection, and
 
 ## Idempotency
 
-Selected mutating operations require an `Idempotency-Key` header:
+Selected mutating operations require an `Idempotency-Key` header (maximum 255 characters):
 
 ```http
 POST  /orders
@@ -504,17 +541,18 @@ Keys are scoped per authenticated user: `(user_id, idempotency_key)`.
 
 - If a completed request is repeated with the same key, the stored response is returned.
 - If the key is currently being processed, the second request receives `409 Conflict`.
-- Successful responses are cached.
+- Successful (2xx) responses are cached.
 - Failed responses release the key so the client can retry after correcting the request or after a transient server failure.
+- If a client disconnects before the response is sent, the key is released.
 
 ## Rate Limiting
 
 Two rate limiters are configured:
 
-| Scope                            | Limit                                       |
-| -------------------------------- | ------------------------------------------- |
-| Authentication routes            | `AUTH_RATE_LIMIT_MAX` requests / 15 minutes |
-| Order, return, and refund routes | `API_RATE_LIMIT_MAX` requests / 15 minutes  |
+| Scope                                    | Limit                                       |
+| ---------------------------------------- | ------------------------------------------- |
+| Authentication routes                    | `AUTH_RATE_LIMIT_MAX` requests / 15 minutes |
+| Order, return, refund, and product routes | `API_RATE_LIMIT_MAX` requests / 15 minutes  |
 
 Defaults:
 
@@ -523,7 +561,7 @@ AUTH_RATE_LIMIT_MAX=10
 API_RATE_LIMIT_MAX=80
 ```
 
-The current implementation uses in-memory rate limiting. Redis-backed rate limiting is a future improvement.
+Exceeding a limit returns `429` with the standard error body. The current implementation uses in-memory rate limiting. Redis-backed rate limiting is a future improvement.
 
 ## Validation and Error Handling
 
@@ -547,9 +585,7 @@ Input validation and business validation are separated.
 - Return quantities
 - Refund eligibility
 
-Application errors are represented by `AppError` subclasses and handled by centralized error middleware.
-
-Typical responses include:
+Application errors are represented by `AppError` subclasses and handled by a single centralized error middleware, which also logs unexpected errors. Every error response has the same shape:
 
 ```json
 {
@@ -558,14 +594,15 @@ Typical responses include:
 }
 ```
 
-Unexpected errors return:
-
-```json
-{
-  "error": "Internal server error",
-  "code": "INTERNAL_ERROR"
-}
-```
+| Status | `code`           | Typical cause                                       |
+| ------ | ---------------- | --------------------------------------------------- |
+| 400    | `BAD_REQUEST`    | Invalid input or malformed JSON                     |
+| 401    | `UNAUTHORIZED`   | Missing/invalid token, wrong credentials            |
+| 403    | `FORBIDDEN`      | Role not allowed to perform the operation           |
+| 404    | `NOT_FOUND`      | Missing resource, or another customer's resource    |
+| 409    | `CONFLICT`       | Invalid state transition, duplicate, concurrent change |
+| 429    | `RATE_LIMITED`   | Rate limit exceeded                                 |
+| 500    | `INTERNAL_ERROR` | Unexpected server error                             |
 
 ## Testing
 
@@ -578,6 +615,7 @@ The test suite currently covers:
 - Customer data isolation
 - Idempotency
 - Concurrent duplicate requests
+- Server-side pricing and the product catalog
 - Order state transitions
 - Return state transitions
 - Return rejection cascades
@@ -585,7 +623,7 @@ The test suite currently covers:
 - Failed refund retry behavior
 - Database behavior
 
-Tests use `.env.test` and a separate test database.
+Tests use `.env.test` and a separate test database. Each test resets the database and seeds a small fixed set of products.
 
 > [!CAUTION]
 > Because tests truncate shared database tables, `.env.test` must never point to a database containing data you want to keep.
@@ -599,6 +637,8 @@ npm test
 ## Project Structure
 
 ```text
+openapi.yaml
+
 src/
 ├── config/
 │   └── env.ts
@@ -617,13 +657,12 @@ src/
 │       ├── 004_fix_idempotency_constraint_up.sql
 │       ├── 004_fix_idempotency_constraint_down.sql
 │       ├── 005_allow_refund_retry_after_failure_up.sql
-│       └── 005_allow_refund_retry_after_failure_down.sql
+│       ├── 005_allow_refund_retry_after_failure_down.sql
+│       ├── 006_add_products_up.sql
+│       └── 006_add_products_down.sql
 │
 ├── errors/
 │   └── AppError.ts
-│
-├── integrations/
-│   └── paystack.ts
 │
 ├── middleware/
 │   ├── errorHandler.ts
@@ -635,21 +674,20 @@ src/
 ├── routes/
 │   ├── authRouter.ts
 │   ├── ordersRouter.ts
-│   ├── paymentRouter.ts
+│   ├── productsRouter.ts
 │   ├── refundsRouter.ts
 │   └── returnsRouter.ts
 │
 ├── services/
 │   ├── authService.ts
 │   ├── orderService.ts
-│   ├── paymentService.ts
 │   ├── refundService.ts
 │   └── returnService.ts
 │
 ├── store/
 │   ├── authStore.ts
 │   ├── orderStore.ts
-│   ├── paymentStore.ts
+│   ├── productStore.ts
 │   ├── refundStore.ts
 │   └── returnStore.ts
 │
@@ -667,13 +705,18 @@ tests/
 └── services/
 ```
 
-## Current Scope
+## Current Scope and Known Limitations
 
-Fulcrum is currently a backend-only project focused on order processing and the workflows that follow an order.
+Fulcrum is a backend-only project focused on order processing and the workflows that follow an order. It includes persistent PostgreSQL storage, authentication, authorization, data isolation, server-side pricing, order/return/refund state machines, transactional consistency, idempotency, rate limiting, migrations, interactive API documentation, and automated tests.
 
-The current implementation includes persistent PostgreSQL storage, authentication, authorization, data isolation, order/return/refund state machines, transactional consistency, idempotency, rate limiting, migrations, and automated tests.
+Known limitations and possible future work:
 
-There is currently no frontend or generated API specification.
+- **No frontend.** The API is explored through Swagger UI at `/docs`.
+- **No online payments.** Refunds are recorded and completed by staff; no payment provider is integrated.
+- **Inventory is not tracked.** Products have no stock levels, so an order is never rejected for lack of stock.
+- **Migration runner is basic.** It does not track applied migrations (see [Run migrations](#3-run-migrations)).
+- **One active return per order.** Placing a return moves the whole order to `return_requested`, so further returns on that order wait until the first is resolved.
+- **In-memory rate limiting.** Limits are per server process; a Redis-backed store would be needed to scale across instances.
 
 ## Author
 

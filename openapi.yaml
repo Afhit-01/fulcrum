@@ -1,0 +1,902 @@
+openapi: 3.0.3
+
+info:
+  title: Fulcrum API
+  version: 1.0.0
+  description: |
+    REST API for managing the lifecycle of orders, returns, and refunds.
+
+    **How to try it in this page**
+    1. Call `POST /auth/customer/register`, then `POST /auth/customer/login` (or `POST /auth/staff/login` with the seeded admin).
+    2. Copy the `token` from the response, click **Authorize**, and paste it (no `Bearer ` prefix needed).
+    3. Mutating endpoints marked with an `Idempotency-Key` header need a unique value per logical request (any random string, up to 255 characters).
+
+    **Errors** always look like `{ "error": "message", "code": "CODE" }`.
+
+    | HTTP | `code` |
+    |------|--------|
+    | 400 | `BAD_REQUEST` |
+    | 401 | `UNAUTHORIZED` |
+    | 403 | `FORBIDDEN` |
+    | 404 | `NOT_FOUND` |
+    | 409 | `CONFLICT` |
+    | 429 | `RATE_LIMITED` |
+    | 500 | `INTERNAL_ERROR` |
+
+    **Rate limits** (per IP, 15-minute window): auth endpoints 10 requests by default, all other endpoints 80.
+
+servers:
+  - url: /
+    description: This server
+
+tags:
+  - name: Auth
+  - name: Products
+  - name: Orders
+  - name: Returns
+  - name: Refunds
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/customer/register:
+    post:
+      tags: [Auth]
+      summary: Register a customer
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Credentials"
+      responses:
+        "200":
+          description: Customer registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /auth/customer/login:
+    post:
+      tags: [Auth]
+      summary: Log in as a customer
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Credentials"
+      responses:
+        "200":
+          $ref: "#/components/responses/LoginSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /auth/staff/login:
+    post:
+      tags: [Auth]
+      summary: Log in as staff or admin
+      description: Staff and admin accounts are created by the seed script; there is no public staff registration.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Credentials"
+      responses:
+        "200":
+          $ref: "#/components/responses/LoginSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /products:
+    get:
+      tags: [Products]
+      summary: List the product catalog
+      description: Public. Returns active products only. Order prices always come from this catalog, never from the client.
+      security: []
+      responses:
+        "200":
+          description: Active products, sorted by name
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /orders:
+    post:
+      tags: [Orders]
+      summary: Place an order (customers only)
+      description: |
+        Send only `productId` and `quantity`. The server looks up each product's name and price.
+        Each product may appear once per order, and quantity is a whole number from 1 to 500.
+
+        Only successful (2xx) responses are stored against the `Idempotency-Key`. Re-sending the same key after a success replays the original response; after a failure the request runs again.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "201":
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Another request with this idempotency key is still being processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    get:
+      tags: [Orders]
+      summary: List orders by status
+      description: Customers see only their own orders. Staff and admins see all orders.
+      parameters:
+        - name: status
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/OrderStatus"
+      responses:
+        "200":
+          description: Orders with the given status
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /orders/report:
+    get:
+      tags: [Orders]
+      summary: Order report (staff and admin)
+      description: Revenue counts orders in `confirmed`, `shipped` and `delivered` status.
+      responses:
+        "200":
+          description: Aggregated order report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderReport"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /orders/{orderId}:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+    get:
+      tags: [Orders]
+      summary: Get an order
+      description: Customers can only fetch their own orders; another customer's order returns 404.
+      responses:
+        "200":
+          description: The order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    delete:
+      tags: [Orders]
+      summary: Cancel an order
+      description: Allowed only while the order is `pending` or `confirmed`. Customers can cancel only their own orders.
+      responses:
+        "200":
+          description: Order cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /orders/{orderId}/total:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+    get:
+      tags: [Orders]
+      summary: Get an order's total
+      responses:
+        "200":
+          description: Sum of quantity x unit price over the order's items
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: number
+                    example: 30000
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /orders/{orderId}/status:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+    patch:
+      tags: [Orders]
+      summary: Update an order's status (staff and admin)
+      description: |
+        Allowed transitions:
+        `pending` to `confirmed` or `cancelled`; `confirmed` to `shipped` or `cancelled`;
+        `shipped` to `delivered`; `delivered` to `return_requested`;
+        `return_requested` to `returned` or `delivered`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: "#/components/schemas/OrderStatus"
+      responses:
+        "200":
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /return:
+    get:
+      tags: [Returns]
+      summary: List return requests
+      description: Customers see only their own. Staff and admins see all.
+      responses:
+        "200":
+          description: Return requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReturnRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /return/{returnId}:
+    get:
+      tags: [Returns]
+      summary: Get a return request
+      parameters:
+        - name: returnId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The return request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /return/{orderId}/{productId}/{quantity}:
+    patch:
+      tags: [Returns]
+      summary: Request a return (customers only)
+      description: |
+        The order must be `delivered` and within 30 days of creation. The quantity cannot exceed the quantity ordered.
+        The return request is created and the order moves to `return_requested` in one transaction.
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+        - $ref: "#/components/parameters/ProductId"
+        - name: quantity
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+                  example: Item arrived damaged
+      responses:
+        "200":
+          description: Return request received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /return/{orderId}/{productId}/review:
+    patch:
+      tags: [Returns]
+      summary: Approve or reject a return (staff and admin)
+      description: Rejecting resets the order to `delivered` in the same transaction.
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+        - $ref: "#/components/parameters/ProductId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [review]
+              properties:
+                review:
+                  type: string
+                  enum: [approved, rejected]
+      responses:
+        "200":
+          $ref: "#/components/responses/ReturnUpdated"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /return/{orderId}/{productId}/ship:
+    patch:
+      tags: [Returns]
+      summary: Mark a return as in transit (staff and admin)
+      description: The return must be `approved`.
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+        - $ref: "#/components/parameters/ProductId"
+      responses:
+        "200":
+          $ref: "#/components/responses/ReturnUpdated"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /return/{orderId}/{productId}/receive:
+    patch:
+      tags: [Returns]
+      summary: Mark a return as received (staff and admin)
+      description: The return must be `in_transit`.
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+        - $ref: "#/components/parameters/ProductId"
+      responses:
+        "200":
+          $ref: "#/components/responses/ReturnUpdated"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /return/{orderId}/{productId}/refund:
+    post:
+      tags: [Returns]
+      summary: Create a refund for a received return (staff and admin)
+      description: The return must be `received`. Only one active refund can exist per return.
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+        - $ref: "#/components/parameters/ProductId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refundAmount]
+              properties:
+                refundAmount:
+                  type: number
+                  exclusiveMinimum: true
+                  minimum: 0
+                  example: 15000
+      responses:
+        "200":
+          description: Refund created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  refund:
+                    $ref: "#/components/schemas/Refund"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /refunds:
+    get:
+      tags: [Refunds]
+      summary: List refunds
+      description: Customers see only refunds for their own orders. Staff and admins see all.
+      responses:
+        "200":
+          description: Refunds
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Refund"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /refunds/{refundId}:
+    get:
+      tags: [Refunds]
+      summary: Get a refund
+      parameters:
+        - $ref: "#/components/parameters/RefundId"
+      responses:
+        "200":
+          description: The refund
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Refund"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /refunds/{refundId}/complete:
+    patch:
+      tags: [Refunds]
+      summary: Complete or fail a pending refund (staff and admin)
+      description: |
+        `completed` marks the refund, the return and the order (`returned`) in one transaction.
+        `failed` marks only the refund, leaving the return and order untouched so a new refund can be created.
+        A refund that is no longer `pending` returns 409.
+      parameters:
+        - $ref: "#/components/parameters/RefundId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [outcome]
+              properties:
+                outcome:
+                  type: string
+                  enum: [completed, failed]
+      responses:
+        "200":
+          description: Refund updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  refund:
+                    $ref: "#/components/schemas/Refund"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token returned by a login endpoint. Expires after one hour.
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Unique string (max 255 characters) identifying this logical request.
+      schema:
+        type: string
+        maxLength: 255
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ProductId:
+      name: productId
+      in: path
+      required: true
+      schema:
+        type: string
+        example: sku-1
+    RefundId:
+      name: refundId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    LoginSuccess:
+      description: Logged in
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+              token:
+                type: string
+    ReturnUpdated:
+      description: Return request updated
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+              returnRequest:
+                $ref: "#/components/schemas/ReturnRequest"
+    BadRequest:
+      description: Invalid input
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: Invalid request body
+            code: BAD_REQUEST
+    Unauthorized:
+      description: Missing, invalid or expired token, or wrong credentials
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: Access token missing
+            code: UNAUTHORIZED
+    Forbidden:
+      description: The authenticated role is not allowed to do this
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: Only customers can place orders
+            code: FORBIDDEN
+    NotFound:
+      description: Resource not found (or not visible to this customer)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: Order not found
+            code: NOT_FOUND
+    Conflict:
+      description: The resource is in a state that does not allow this action
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: Cannot change status from shipped to cancelled
+            code: CONFLICT
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: Too many requests. Please try again later.
+            code: RATE_LIMITED
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+          enum:
+            [
+              BAD_REQUEST,
+              UNAUTHORIZED,
+              FORBIDDEN,
+              NOT_FOUND,
+              CONFLICT,
+              RATE_LIMITED,
+              INTERNAL_ERROR,
+            ]
+    Message:
+      type: object
+      properties:
+        message:
+          type: string
+    Credentials:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: customer@example.com
+        password:
+          type: string
+          format: password
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          example: sku-1
+        name:
+          type: string
+          example: Keyboard
+        unitPrice:
+          type: number
+          example: 15000
+    CreateOrderRequest:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [productId, quantity]
+            properties:
+              productId:
+                type: string
+                example: sku-1
+              quantity:
+                type: integer
+                minimum: 1
+                maximum: 500
+                example: 2
+    OrderStatus:
+      type: string
+      enum:
+        [
+          pending,
+          confirmed,
+          shipped,
+          delivered,
+          cancelled,
+          return_requested,
+          returned,
+        ]
+    OrderItem:
+      type: object
+      properties:
+        productId:
+          type: string
+        name:
+          type: string
+        unitPrice:
+          type: number
+        quantity:
+          type: integer
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        customerName:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        createdAt:
+          type: string
+          format: date-time
+    OrderReport:
+      type: object
+      properties:
+        totalOrders:
+          type: integer
+        byStatus:
+          type: object
+          additionalProperties:
+            type: integer
+        revenue:
+          type: number
+    ReturnRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        orderId:
+          type: string
+          format: uuid
+        productId:
+          type: string
+        reason:
+          type: string
+        quantity:
+          type: integer
+        status:
+          type: string
+          enum: [pending, approved, rejected, in_transit, received, refunded]
+        requestedAt:
+          type: string
+          format: date-time
+        approvedAt:
+          type: string
+          format: date-time
+    Refund:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        returnRequestId:
+          type: string
+          format: uuid
+        orderId:
+          type: string
+          format: uuid
+        productId:
+          type: string
+        amount:
+          type: number
+        status:
+          type: string
+          enum: [pending, completed, failed]
+        requestedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true

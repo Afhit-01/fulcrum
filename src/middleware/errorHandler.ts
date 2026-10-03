@@ -24,6 +24,12 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
       .json({ error: "Resource already exists", code: "CONFLICT" });
   }
 
+  if (err?.code === "22P02") {
+    return res
+      .status(400)
+      .json({ error: "Invalid identifier format", code: "BAD_REQUEST" });
+  }
+
   const status = err?.status ?? err?.statusCode;
   if (Number.isInteger(status) && status >= 400 && status < 500) {
     return res.status(status).json({

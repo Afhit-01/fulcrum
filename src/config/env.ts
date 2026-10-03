@@ -20,8 +20,6 @@ if (!Number.isInteger(port) || port <= 0) {
   );
 }
 
-const paystackSecretKey = requiredEnv("PAYSTACK_SECRET_KEY");
-
 const parseOptionalPositiveInteger = (
   name: string,
   defaultValue: number,
@@ -47,7 +45,6 @@ export const env = {
   databaseUrl: requiredEnv("DATABASE_URL"),
   jwtSecret: requiredEnv("JWT_SECRET"),
   port,
-  paystackSecretKey,
   authRateLimitMax: parseOptionalPositiveInteger("AUTH_RATE_LIMIT_MAX", 10),
   apiRateLimitMax: parseOptionalPositiveInteger("API_RATE_LIMIT_MAX", 80),
 };

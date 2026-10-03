@@ -6,18 +6,26 @@ import ordersRouter from "./routes/ordersRouter.js";
 import returnsRouter from "./routes/returnsRouter.js";
 import refundsRouter from "./routes/refundsRouter.js";
 import authRouter from "./routes/authRouter.js";
-import productsRouter from "./routes/productsRouter.js"
+import productsRouter from "./routes/productsRouter.js";
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
+import fs from "node:fs";
+import path from "node:path";
+import swaggerUi from "swagger-ui-express";
+import { parse } from "yaml";
 
 dotenv.config();
 
 const app: Express = express();
 
+const openApiDocument = parse(
+  fs.readFileSync(path.join(process.cwd(), "openapi.yaml"), "utf-8"),
+);
+
 app.use(helmet());
 app.use(express.json());
 
-app.get("/", (req: Request, res: Response) => {
-  res.status(200).send("Wanna test the order management system? see /orders");
+app.get("/", (_req: Request, res: Response) => {
+  res.status(200).send("Fulcrum API. Interactive documentation: /docs");
 });
 
 app.use("/auth", authLimiter, authRouter);
@@ -26,6 +34,7 @@ app.use("/return", apiLimiter, returnsRouter);
 app.use("/refunds", apiLimiter, refundsRouter);
 app.use("/products", apiLimiter, productsRouter);
 app.use(notFound);
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(openApiDocument));
 app.use(errorHandler);
 
 export default app;

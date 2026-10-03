@@ -34,11 +34,6 @@ export class BadRequestError extends AppError {
     super(400, msg, "BAD_REQUEST");
   }
 }
-export class UpstreamError extends AppError {
-  constructor(msg = "Payment provider error") {
-    super(502, msg, "UPSTREAM_ERROR");
-  }
-}
 export class TooManyRequestsError extends AppError {
   constructor(msg = "Too many requests") {
     super(429, msg, "RATE_LIMITED");
