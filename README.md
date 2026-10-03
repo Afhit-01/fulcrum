@@ -176,6 +176,19 @@ npm run dev
 
 The API runs on <http://localhost:3000>, and the interactive documentation is at <http://localhost:3000/docs>.
 
+### Running with Docker
+
+Create a `.env` file containing `JWT_SECRET` and `SEED_ADMIN_PASSWORD`, then:
+
+```bash
+docker compose up -d --build
+docker compose exec api npm run migrate:up
+docker compose exec api npm run seed
+```
+
+The API is at <http://localhost:3000> and the docs at <http://localhost:3000/docs>.
+Use `docker compose down -v` to wipe the database and start over.
+
 ## Useful Commands
 
 | Command                     | Purpose                                      |
