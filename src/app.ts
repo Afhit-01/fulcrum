@@ -39,8 +39,10 @@ app.use("/orders", apiLimiter, ordersRouter);
 app.use("/return", apiLimiter, returnsRouter);
 app.use("/refunds", apiLimiter, refundsRouter);
 app.use("/products", apiLimiter, productsRouter);
-app.use(notFound);
+
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(openApiDocument));
+
+app.use(notFound);
 app.use(errorHandler);
 
 export default app;

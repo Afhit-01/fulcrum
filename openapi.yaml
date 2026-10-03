@@ -11,17 +11,15 @@ info:
     2. Copy the `token` from the response, click **Authorize**, and paste it (no `Bearer ` prefix needed).
     3. Mutating endpoints marked with an `Idempotency-Key` header need a unique value per logical request (any random string, up to 255 characters).
 
-    **Errors** always look like `{ "error": "message", "code": "CODE" }`.
+    **Errors** always look like `{ "error": "message", "code": "CODE" }`:
 
-    | HTTP | `code` |
-    |------|--------|
-    | 400 | `BAD_REQUEST` |
-    | 401 | `UNAUTHORIZED` |
-    | 403 | `FORBIDDEN` |
-    | 404 | `NOT_FOUND` |
-    | 409 | `CONFLICT` |
-    | 429 | `RATE_LIMITED` |
-    | 500 | `INTERNAL_ERROR` |
+    - `400` `BAD_REQUEST`: invalid input
+    - `401` `UNAUTHORIZED`: missing or invalid token, or wrong credentials
+    - `403` `FORBIDDEN`: role not allowed to do this
+    - `404` `NOT_FOUND`: missing resource
+    - `409` `CONFLICT`: invalid state or concurrent change
+    - `429` `RATE_LIMITED`: rate limit exceeded
+    - `500` `INTERNAL_ERROR`: unexpected server error
 
     **Rate limits** (per IP, 15-minute window): auth endpoints 10 requests by default, all other endpoints 80.
 
