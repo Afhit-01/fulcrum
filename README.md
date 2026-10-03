@@ -178,21 +178,21 @@ The API runs on <http://localhost:3000>, and the interactive documentation is at
 
 ## Useful Commands
 
-| Command                     | Purpose                                         |
-| --------------------------- | ----------------------------------------------- |
-| `npm run dev`               | Start the development server with watch mode    |
-| `npm run build`             | Compile TypeScript                              |
-| `npm run lint`              | Run ESLint                                      |
-| `npm run lint:fix`          | Fix ESLint issues where possible                |
-| `npm run format`            | Format the project with Prettier                |
-| `npm run format:check`      | Check formatting                                |
-| `npm test`                  | Run the Vitest test suite                       |
-| `npm run test:watch`        | Run Vitest in watch mode                        |
-| `npm run migrate:up`        | Apply all application migrations                |
-| `npm run migrate:down`      | Reverse all application migrations              |
-| `npm run migrate:test:up`   | Apply migrations using `.env.test`              |
-| `npm run migrate:test:down` | Reverse test migrations                         |
-| `npm run seed`              | Seed an admin account and the sample catalog    |
+| Command                     | Purpose                                      |
+| --------------------------- | -------------------------------------------- |
+| `npm run dev`               | Start the development server with watch mode |
+| `npm run build`             | Compile TypeScript                           |
+| `npm run lint`              | Run ESLint                                   |
+| `npm run lint:fix`          | Fix ESLint issues where possible             |
+| `npm run format`            | Format the project with Prettier             |
+| `npm run format:check`      | Check formatting                             |
+| `npm test`                  | Run the Vitest test suite                    |
+| `npm run test:watch`        | Run Vitest in watch mode                     |
+| `npm run migrate:up`        | Apply all application migrations             |
+| `npm run migrate:down`      | Reverse all application migrations           |
+| `npm run migrate:test:up`   | Apply migrations using `.env.test`           |
+| `npm run migrate:test:down` | Reverse test migrations                      |
+| `npm run seed`              | Seed an admin account and the sample catalog |
 
 ## API Documentation
 
@@ -549,9 +549,9 @@ Keys are scoped per authenticated user: `(user_id, idempotency_key)`.
 
 Two rate limiters are configured:
 
-| Scope                                    | Limit                                       |
-| ---------------------------------------- | ------------------------------------------- |
-| Authentication routes                    | `AUTH_RATE_LIMIT_MAX` requests / 15 minutes |
+| Scope                                     | Limit                                       |
+| ----------------------------------------- | ------------------------------------------- |
+| Authentication routes                     | `AUTH_RATE_LIMIT_MAX` requests / 15 minutes |
 | Order, return, refund, and product routes | `API_RATE_LIMIT_MAX` requests / 15 minutes  |
 
 Defaults:
@@ -594,15 +594,15 @@ Application errors are represented by `AppError` subclasses and handled by a sin
 }
 ```
 
-| Status | `code`           | Typical cause                                       |
-| ------ | ---------------- | --------------------------------------------------- |
-| 400    | `BAD_REQUEST`    | Invalid input or malformed JSON                     |
-| 401    | `UNAUTHORIZED`   | Missing/invalid token, wrong credentials            |
-| 403    | `FORBIDDEN`      | Role not allowed to perform the operation           |
-| 404    | `NOT_FOUND`      | Missing resource, or another customer's resource    |
+| Status | `code`           | Typical cause                                          |
+| ------ | ---------------- | ------------------------------------------------------ |
+| 400    | `BAD_REQUEST`    | Invalid input or malformed JSON                        |
+| 401    | `UNAUTHORIZED`   | Missing/invalid token, wrong credentials               |
+| 403    | `FORBIDDEN`      | Role not allowed to perform the operation              |
+| 404    | `NOT_FOUND`      | Missing resource, or another customer's resource       |
 | 409    | `CONFLICT`       | Invalid state transition, duplicate, concurrent change |
-| 429    | `RATE_LIMITED`   | Rate limit exceeded                                 |
-| 500    | `INTERNAL_ERROR` | Unexpected server error                             |
+| 429    | `RATE_LIMITED`   | Rate limit exceeded                                    |
+| 500    | `INTERNAL_ERROR` | Unexpected server error                                |
 
 ## Testing
 

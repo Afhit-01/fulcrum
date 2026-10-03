@@ -12,6 +12,7 @@ import fs from "node:fs";
 import path from "node:path";
 import swaggerUi from "swagger-ui-express";
 import { parse } from "yaml";
+import pool from "./db/client.js";
 
 dotenv.config();
 
@@ -26,6 +27,11 @@ app.use(express.json());
 
 app.get("/", (_req: Request, res: Response) => {
   res.status(200).send("Fulcrum API. Interactive documentation: /docs");
+});
+
+app.get("/health", async (_req: Request, res: Response) => {
+  await pool.query("SELECT 1");
+  res.status(200).json({ status: "ok" });
 });
 
 app.use("/auth", authLimiter, authRouter);
