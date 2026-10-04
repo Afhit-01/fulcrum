@@ -49,14 +49,14 @@ The server never accepts prices from the client. When an order is placed, it loo
 
 Migration files live in `src/db/migrations/`, each with an `_up.sql` and a `_down.sql` file:
 
-| Migration | Purpose |
-| --- | --- |
-| 001 | Initial schema |
-| 002 | Authentication (customers and staff) |
-| 003 | Idempotency keys |
-| 004 | Fix the idempotency constraint |
-| 005 | Allow refund retry after failure |
-| 006 | Products table |
+| Migration | Purpose                              |
+| --------- | ------------------------------------ |
+| 001       | Initial schema                       |
+| 002       | Authentication (customers and staff) |
+| 003       | Idempotency keys                     |
+| 004       | Fix the idempotency constraint       |
+| 005       | Allow refund retry after failure     |
+| 006       | Products table                       |
 
 The runner in `src/db/migrate.ts` has two limits to be aware of:
 

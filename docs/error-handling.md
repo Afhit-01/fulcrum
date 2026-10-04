@@ -11,15 +11,15 @@ Every error response has the same shape:
 }
 ```
 
-| Status | `code` | Typical cause |
-| --- | --- | --- |
-| 400 | `BAD_REQUEST` | Invalid input, malformed JSON, or a malformed id |
-| 401 | `UNAUTHORIZED` | Missing or invalid token, or wrong credentials |
-| 403 | `FORBIDDEN` | The role is not allowed to perform the operation |
-| 404 | `NOT_FOUND` | Missing resource, or another customer's resource |
-| 409 | `CONFLICT` | Invalid state transition, duplicate, or a concurrent change |
-| 429 | `RATE_LIMITED` | Rate limit exceeded |
-| 500 | `INTERNAL_ERROR` | Unexpected server error |
+| Status | `code`           | Typical cause                                               |
+| ------ | ---------------- | ----------------------------------------------------------- |
+| 400    | `BAD_REQUEST`    | Invalid input, malformed JSON, or a malformed id            |
+| 401    | `UNAUTHORIZED`   | Missing or invalid token, or wrong credentials              |
+| 403    | `FORBIDDEN`      | The role is not allowed to perform the operation            |
+| 404    | `NOT_FOUND`      | Missing resource, or another customer's resource            |
+| 409    | `CONFLICT`       | Invalid state transition, duplicate, or a concurrent change |
+| 429    | `RATE_LIMITED`   | Rate limit exceeded                                         |
+| 500    | `INTERNAL_ERROR` | Unexpected server error                                     |
 
 ## How it works
 

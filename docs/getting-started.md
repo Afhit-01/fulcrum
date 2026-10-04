@@ -107,27 +107,27 @@ Then open <http://localhost:3000/docs>.
 
 ## Useful commands
 
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Start the development server with watch mode |
-| `npm run build` | Compile TypeScript |
-| `npm run lint` | Run ESLint |
-| `npm run lint:fix` | Fix ESLint issues where possible |
-| `npm run format` | Format the project with Prettier |
-| `npm run format:check` | Check formatting |
-| `npm test` | Run the Vitest test suite |
-| `npm run test:watch` | Run Vitest in watch mode |
-| `npm run migrate:up` | Apply all application migrations |
-| `npm run migrate:down` | Reverse all application migrations |
-| `npm run migrate:test:up` | Apply migrations using `.env.test` |
-| `npm run migrate:test:down` | Reverse test migrations |
-| `npm run seed` | Seed an admin account and the sample catalog |
+| Command                     | Purpose                                      |
+| --------------------------- | -------------------------------------------- |
+| `npm run dev`               | Start the development server with watch mode |
+| `npm run build`             | Compile TypeScript                           |
+| `npm run lint`              | Run ESLint                                   |
+| `npm run lint:fix`          | Fix ESLint issues where possible             |
+| `npm run format`            | Format the project with Prettier             |
+| `npm run format:check`      | Check formatting                             |
+| `npm test`                  | Run the Vitest test suite                    |
+| `npm run test:watch`        | Run Vitest in watch mode                     |
+| `npm run migrate:up`        | Apply all application migrations             |
+| `npm run migrate:down`      | Reverse all application migrations           |
+| `npm run migrate:test:up`   | Apply migrations using `.env.test`           |
+| `npm run migrate:test:down` | Reverse test migrations                      |
+| `npm run seed`              | Seed an admin account and the sample catalog |
 
 ## Troubleshooting
 
-| Symptom | Likely cause |
-| --- | --- |
-| `429` with code `RATE_LIMITED` | You hit a rate limit. Wait, or raise the limits in `.env`. |
-| `migrate:up` fails with "already exists" | The database already has the tables. See the note under [Run migrations](#3-run-migrations). |
-| `/docs` returns "Route not found" | The docs route must be registered before the not-found handler in `src/app.ts`. |
-| Tests fail with `relation "products" does not exist` | The test database has not received the latest migration. |
+| Symptom                                              | Likely cause                                                                                 |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `429` with code `RATE_LIMITED`                       | You hit a rate limit. Wait, or raise the limits in `.env`.                                   |
+| `migrate:up` fails with "already exists"             | The database already has the tables. See the note under [Run migrations](#3-run-migrations). |
+| `/docs` returns "Route not found"                    | The docs route must be registered before the not-found handler in `src/app.ts`.              |
+| Tests fail with `relation "products" does not exist` | The test database has not received the latest migration.                                     |

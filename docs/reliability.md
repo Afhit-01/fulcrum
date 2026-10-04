@@ -63,9 +63,9 @@ It prevents a retried request from performing the same operation twice. Keys are
 
 ## Rate limiting
 
-| Scope | Limit |
-| --- | --- |
-| Authentication routes | `AUTH_RATE_LIMIT_MAX` requests per 15 minutes |
-| Order, return, refund, and product routes | `API_RATE_LIMIT_MAX` requests per 15 minutes |
+| Scope                                     | Limit                                         |
+| ----------------------------------------- | --------------------------------------------- |
+| Authentication routes                     | `AUTH_RATE_LIMIT_MAX` requests per 15 minutes |
+| Order, return, refund, and product routes | `API_RATE_LIMIT_MAX` requests per 15 minutes  |
 
 Defaults are `10` and `80`. Exceeding a limit returns `429` with code `RATE_LIMITED`. The limiter keeps its counts in memory, so limits apply per server process.

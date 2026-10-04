@@ -44,19 +44,19 @@ There is no public staff registration. Staff and admin accounts are created by t
 
 ## Roles
 
-| Operation | Customer | Staff | Admin |
-| --- | :---: | :---: | :---: |
-| Browse products (public) | yes | yes | yes |
-| Register | yes | no | no |
-| Login | yes | yes | yes |
-| Create order | yes | no | no |
-| View own orders | yes | no | no |
-| View orders across customers | no | yes | yes |
-| Update order status | no | yes | yes |
-| Request return | yes | no | no |
-| Review returns | no | yes | yes |
-| Move returns through operational stages | no | yes | yes |
-| Process refunds | no | yes | yes |
+| Operation                               | Customer | Staff | Admin |
+| --------------------------------------- | :------: | :---: | :---: |
+| Browse products (public)                |   yes    |  yes  |  yes  |
+| Register                                |   yes    |  no   |  no   |
+| Login                                   |   yes    |  yes  |  yes  |
+| Create order                            |   yes    |  no   |  no   |
+| View own orders                         |   yes    |  no   |  no   |
+| View orders across customers            |    no    |  yes  |  yes  |
+| Update order status                     |    no    |  yes  |  yes  |
+| Request return                          |   yes    |  no   |  no   |
+| Review returns                          |    no    |  yes  |  yes  |
+| Move returns through operational stages |    no    |  yes  |  yes  |
+| Process refunds                         |    no    |  yes  |  yes  |
 
 Customer queries are filtered by the authenticated user's id, so one customer cannot retrieve another's records by changing an id in the URL. Another customer's record returns `404`, not `403`.
 
@@ -84,9 +84,7 @@ Create an order with product ids and quantities only:
 
 ```json
 {
-  "items": [
-    { "productId": "sku-1", "quantity": 1 }
-  ]
+  "items": [{ "productId": "sku-1", "quantity": 1 }]
 }
 ```
 

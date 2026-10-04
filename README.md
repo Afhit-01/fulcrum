@@ -32,17 +32,17 @@ Prefer containers? See [Running with Docker](docs/getting-started.md#running-wit
 
 ## Documentation
 
-| Document | What it covers |
-| --- | --- |
-| [Getting started](docs/getting-started.md) | Setup, environment variables, migrations, seeding, Docker, commands |
-| [API reference](docs/api.md) | Authentication, roles, and every endpoint (also in [`openapi.yaml`](openapi.yaml) and at `/docs`) |
-| [Workflows](docs/workflows.md) | Order, return, and refund state machines |
-| [Architecture](docs/architecture.md) | Layers, request lifecycle, project structure |
-| [Error handling](docs/error-handling.md) | Error format, status codes, validation |
-| [Reliability](docs/reliability.md) | Transactions, locking, compare-and-set, idempotency, rate limiting |
-| [Database](docs/database.md) | Tables, relationships, pricing snapshots, migrations |
-| [Testing](docs/testing.md) | Test setup and coverage |
-| [Limitations and roadmap](docs/limitations.md) | What is not built, and what could come next |
+| Document                                       | What it covers                                                                                    |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| [Getting started](docs/getting-started.md)     | Setup, environment variables, migrations, seeding, Docker, commands                               |
+| [API reference](docs/api.md)                   | Authentication, roles, and every endpoint (also in [`openapi.yaml`](openapi.yaml) and at `/docs`) |
+| [Workflows](docs/workflows.md)                 | Order, return, and refund state machines                                                          |
+| [Architecture](docs/architecture.md)           | Layers, request lifecycle, project structure                                                      |
+| [Error handling](docs/error-handling.md)       | Error format, status codes, validation                                                            |
+| [Reliability](docs/reliability.md)             | Transactions, locking, compare-and-set, idempotency, rate limiting                                |
+| [Database](docs/database.md)                   | Tables, relationships, pricing snapshots, migrations                                              |
+| [Testing](docs/testing.md)                     | Test setup and coverage                                                                           |
+| [Limitations and roadmap](docs/limitations.md) | What is not built, and what could come next                                                       |
 
 ## Tech stack
 
